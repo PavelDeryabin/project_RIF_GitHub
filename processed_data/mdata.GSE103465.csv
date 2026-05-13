@@ -1,0 +1,7 @@
+"","names","GEO.accession","GSM.accession","Sample.name","Phenotype","Menstrual.cycle.time","Menstrual.cycle.phase","Age.years","PC1","PC2","EndEst"
+"GSM2771795","GSM2771795","GSE103465","GSM2771795","Healthy control_rep1","Fertile","day LH + 7","Secretory mid","28",-0.551667138387688,0.108797669651944,11
+"GSM2771796","GSM2771796","GSE103465","GSM2771796","Healthy control_rep2","Fertile","day LH + 7","Secretory mid","24",-5.73782914811506,14.8115504276481,23
+"GSM2771797","GSM2771797","GSE103465","GSM2771797","Healthy control_rep3","Fertile","day LH + 7","Secretory mid","29",34.8486236957572,0.929803189044619,74
+"GSM2771798","GSM2771798","GSE103465","GSM2771798","RIF patient_rep1","RIF","day 7 after oocyte recovery","Secretory mid","31",-13.1631197463317,7.09642402546781,16
+"GSM2771799","GSM2771799","GSE103465","GSM2771799","RIF patient_rep2","RIF","day 7 after oocyte recovery","Secretory mid","23",-3.59180260873402,-15.1978909286935,60
+"GSM2771800","GSM2771800","GSE103465","GSM2771800","RIF patient_rep3","RIF","day 7 after oocyte recovery","Secretory mid","28",-11.8042050541887,-7.74868438311896,52

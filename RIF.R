@@ -140,8 +140,8 @@ ggplot(data = mdata.GSE103465, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'Phenotype') + scale_color_viridis_c()
 
 # Save results
-write.csv(exp.GSE103465.max, 'processed.data/exp.GSE103465.max.csv')
-write.csv(mdata.GSE103465, file = 'processed.data/mdata.GSE103465.csv')
+write.csv(exp.GSE103465.max, 'processed_data/exp.GSE103465.max.csv')
+write.csv(mdata.GSE103465, file = 'processed_data/mdata.GSE103465.csv')
 
 
 
@@ -239,9 +239,9 @@ ggplot(data = mdata.GSE111974, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'Phenotype') + scale_color_viridis_c()
 
 # Save results
-write.csv(exp.GSE111974.max, 'processed.data/exp.GSE111974.max.csv')
-write.csv(exp.GSE111974.avrg, 'processed.data/exp.GSE111974.avrg.csv')
-write.csv(mdata.GSE111974, file = 'processed.data/mdata.GSE111974.csv')
+write.csv(exp.GSE111974.max, 'processed_data/exp.GSE111974.max.csv')
+write.csv(exp.GSE111974.avrg, 'processed_data/exp.GSE111974.avrg.csv')
+write.csv(mdata.GSE111974, file = 'processed_data/mdata.GSE111974.csv')
 
 
 
@@ -329,8 +329,8 @@ ggplot(data = mdata.GSE188409, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'Phenotype') + scale_color_viridis_c()
 
 # Save results
-write.csv(exp.GSE188409.max, 'processed.data/exp.GSE188409.max.csv')
-write.csv(mdata.GSE188409, file = 'processed.data/mdata.GSE188409.csv')
+write.csv(exp.GSE188409.max, 'processed_data/exp.GSE188409.max.csv')
+write.csv(mdata.GSE188409, file = 'processed_data/mdata.GSE188409.csv')
 
 
 
@@ -421,8 +421,8 @@ ggplot(data = mdata.GSE26787, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'Phenotype') + scale_color_viridis_c()
 
 # Save results
-write.csv(subset(mdata.GSE26787, Phenotype != 'RPL'), file = 'processed.data/mdata.GSE26787.csv')
-write.csv(exp.GSE26787.max[, rownames(subset(mdata.GSE26787, Phenotype != 'RPL'))], 'processed.data/exp.GSE26787.max.csv')
+write.csv(subset(mdata.GSE26787, Phenotype != 'RPL'), file = 'processed_data/mdata.GSE26787.csv')
+write.csv(exp.GSE26787.max[, rownames(subset(mdata.GSE26787, Phenotype != 'RPL'))], 'processed_data/exp.GSE26787.max.csv')
 
 
 
@@ -462,11 +462,11 @@ dim(exp.GSE58144)
 exp.GSE58144[1:5, 1:5]
 boxplot(exp.GSE58144[, 1:10]) # as.indicated in GEO, these are log2 ratio (sample/reference) values, download soft.gz file
 
-if (! file.exists('processed.data/GSE58144_family.soft.gz')) {
+if (! file.exists('processed_data/GSE58144_family.soft.gz')) {
   archive_url <- 'https://ftp.ncbi.nlm.nih.gov/geo/series/GSE58nnn/GSE58144/soft/GSE58144_family.soft.gz'
-  download.file(archive_url, destfile = 'processed.data/GSE58144_family.soft.gz', method = 'curl')
+  download.file(archive_url, destfile = 'processed_data/GSE58144_family.soft.gz', method = 'curl')
 }
-dataset.GSE58144.soft_file <- getGEO('GSE58144', filename = 'processed.data/GSE58144_family.soft.gz') 
+dataset.GSE58144.soft_file <- getGEO('GSE58144', filename = 'processed_data/GSE58144_family.soft.gz') 
 length(dataset.GSE58144.soft_file@gsms[['GSM1402321']]@dataTable@table[['ID_REF']])
 sum(rownames(exp.GSE58144) == dataset.GSE58144.soft_file@gsms[['GSM1402321']]@dataTable@table[['ID_REF']])
 sum(rownames(exp.GSE58144) %in% dataset.GSE58144.soft_file@gsms[['GSM1402321']]@dataTable@table[['ID_REF']])
@@ -560,8 +560,8 @@ mdata.GSE58144.subset <- mdata.GSE58144.subset %>%
     Batch == 'cohort 1' ~ 'Cohort 1',
     Batch == 'cohort 2, batch 1' ~ 'Cohort 2, batch 1'))
 
-write.csv(mdata.GSE58144.subset, file = 'processed.data/mdata.GSE58144.subset.csv')
-write.csv(exp.GSE58144.max.subset, 'processed.data/exp.GSE58144.max.subset.csv')
+write.csv(mdata.GSE58144.subset, file = 'processed_data/mdata.GSE58144.subset.csv')
+write.csv(exp.GSE58144.max.subset, 'processed_data/exp.GSE58144.max.subset.csv')
 
 
 
@@ -669,8 +669,8 @@ ggplot(data = mdata.GSE71331, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(exp.GSE71331.max, 'processed.data/exp.GSE71331.max.csv')
-write.csv(mdata.GSE71331, file = 'processed.data/mdata.GSE71331.csv')
+write.csv(exp.GSE71331.max, 'processed_data/exp.GSE71331.max.csv')
+write.csv(mdata.GSE71331, file = 'processed_data/mdata.GSE71331.csv')
 
 
 
@@ -762,8 +762,8 @@ ggplot(data = mdata.GSE92324, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(mdata.GSE92324, file = 'processed.data/mdata.GSE92324.csv')
-write.csv(exp.GSE92324.max, 'processed.data/exp.GSE92324.max.csv')
+write.csv(mdata.GSE92324, file = 'processed_data/mdata.GSE92324.csv')
+write.csv(exp.GSE92324.max, 'processed_data/exp.GSE92324.max.csv')
 
 
 
@@ -839,8 +839,8 @@ ggplot(data = mdata.PRJNA314429, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(mdata.PRJNA314429, file = 'processed.data/mdata.PRJNA314429.csv')
-write.csv(vst.PRJNA314429.mtx, 'processed.data/vst.PRJNA314429.mtx.csv')
+write.csv(mdata.PRJNA314429, file = 'processed_data/mdata.PRJNA314429.csv')
+write.csv(vst.PRJNA314429.mtx, 'processed_data/vst.PRJNA314429.mtx.csv')
 
 
 
@@ -921,8 +921,8 @@ ggplot(data = mdata.GSE106602, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(mdata.GSE106602, file = 'processed.data/mdata.GSE106602.csv')
-write.csv(vst.GSE106602.mtx, 'processed.data/vst.GSE106602.mtx.csv')
+write.csv(mdata.GSE106602, file = 'processed_data/mdata.GSE106602.csv')
+write.csv(vst.GSE106602.mtx, 'processed_data/vst.GSE106602.mtx.csv')
 
 
 
@@ -997,8 +997,8 @@ ggplot(data = mdata.GSE205398, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(mdata.GSE205398, file = 'processed.data/mdata.GSE205398.csv')
-write.csv(vst.GSE205398.mtx, 'processed.data/vst.GSE205398.mtx.csv')
+write.csv(mdata.GSE205398, file = 'processed_data/mdata.GSE205398.csv')
+write.csv(vst.GSE205398.mtx, 'processed_data/vst.GSE205398.mtx.csv')
 
 
 
@@ -1087,8 +1087,8 @@ ggplot(data = mdata.GSE207362, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(mdata.GSE207362, file = 'processed.data/mdata.GSE207362.csv')
-write.csv(vst.GSE207362.mtx, 'processed.data/vst.GSE207362.mtx.csv')
+write.csv(mdata.GSE207362, file = 'processed_data/mdata.GSE207362.csv')
+write.csv(vst.GSE207362.mtx, 'processed_data/vst.GSE207362.mtx.csv')
 
 
 
@@ -1163,8 +1163,8 @@ ggplot(data = mdata.GSE243550, aes(x = PC1, y = PC2, color = EndEst)) +
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-write.csv(mdata.GSE243550, file = 'processed.data/mdata.GSE243550.csv')
-write.csv(vst.GSE243550.mtx, 'processed.data/vst.GSE243550.mtx.csv')
+write.csv(mdata.GSE243550, file = 'processed_data/mdata.GSE243550.csv')
+write.csv(vst.GSE243550.mtx, 'processed_data/vst.GSE243550.mtx.csv')
 
 
 
@@ -1174,8 +1174,8 @@ write.csv(vst.GSE243550.mtx, 'processed.data/vst.GSE243550.mtx.csv')
 
 ### Figure 1 - Explore GSE111974 dataset as an example
 
-mdata.GSE111974 <- read.csv('processed.data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
-exp.GSE111974 <- read.csv('processed.data/exp.GSE111974.max.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE111974 <- read.csv('processed_data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
+exp.GSE111974 <- read.csv('processed_data/exp.GSE111974.max.csv', sep = ',', header = T, row.names = 1)
 
 hvg.RIF.GSE111974 <- names(tail(sort(rowVars(as.matrix(exp.GSE111974))), 500))
 pc.RIF.GSE111974 <- prcomp(t(exp.GSE111974[hvg.RIF.GSE111974, ]), center = TRUE, scale. = TRUE)
@@ -1524,7 +1524,7 @@ p1.line3 <- wrap_plots(p1h, p1i, p1j, ncol = 3, widths = c(2, 3.5, 3.5))
 p1.line4 <- wrap_plots(p1k1, p1l1, p1m1, ncol = 3, widths = c(4.3, 1, 3.7))
 p1.line5 <- wrap_plots(p1k2, p1l2, p1m2, ncol = 3, widths = c(4.3, 1, 3.7))
 p1 <- wrap_plots(p1.line1, p1.line2, p1.line3, p1.line4, p1.line5, nrow = 5)
-ggsave(plot = p1, filename = 'visualization/Figure 1.png', width = 13, height = 18, dpi = 300)
+ggsave(plot = p1, filename = 'visualization_raw/Figure 1.png', width = 13, height = 18, dpi = 300)
 
 
 
@@ -1533,7 +1533,7 @@ ggsave(plot = p1, filename = 'visualization/Figure 1.png', width = 13, height = 
 ### Supplementary figure 1 - Volcano with top DEGs reported by the authors
 
 # Replication of the original study analysis - Averaging probes signals for a gene and running DEA using simple model
-exp.GSE111974.avrg <- read.csv('processed.data/exp.GSE111974.avrg.csv', sep = ',', header = T, row.names = 1)
+exp.GSE111974.avrg <- read.csv('processed_data/exp.GSE111974.avrg.csv', sep = ',', header = T, row.names = 1)
 Group <- factor(mdata.GSE111974$Phenotype)
 design <- model.matrix(~ Group)
 fit <- lmFit(as.matrix(exp.GSE111974.avrg), design)
@@ -1628,7 +1628,7 @@ ps1b <- ggplot(data = dea.GSE111974.simple.full.max, aes(x = logFC, y = -log10(P
     breaks = c('Up-regulated', 'Not reported', 'Down-regulated'))
 
 ps1 <- wrap_plots(ps1a, ps1b, nrow = 2)
-ggsave(plot = ps1, filename = 'visualization/Figure S1.png', width = 10, height = 11, dpi = 300)
+ggsave(plot = ps1, filename = 'visualization_raw/Figure S1.png', width = 10, height = 11, dpi = 300)
 
 
 
@@ -1637,29 +1637,29 @@ ggsave(plot = ps1, filename = 'visualization/Figure S1.png', width = 10, height 
 
 ### Supplementary figure 2 - PCA and boxplots by EndEst and Phenotype for the remaining eleven GEO datasets
 
-mdata.GSE103465 <- read.csv('processed.data/mdata.GSE103465.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE106602 <- read.csv('processed.data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE188409 <- read.csv('processed.data/mdata.GSE188409.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE205398 <- read.csv('processed.data/mdata.GSE205398.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE26787 <- read.csv('processed.data/mdata.GSE26787.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE58144.subset <- read.csv('processed.data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE71331 <- read.csv('processed.data/mdata.GSE71331.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE92324 <- read.csv('processed.data/mdata.GSE92324.csv', sep = ',', header = T, row.names = 1)
-mdata.PRJNA314429 <- read.csv('processed.data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE103465 <- read.csv('processed_data/mdata.GSE103465.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE106602 <- read.csv('processed_data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE188409 <- read.csv('processed_data/mdata.GSE188409.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE205398 <- read.csv('processed_data/mdata.GSE205398.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE207362 <- read.csv('processed_data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE243550 <- read.csv('processed_data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE26787 <- read.csv('processed_data/mdata.GSE26787.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset <- read.csv('processed_data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE71331 <- read.csv('processed_data/mdata.GSE71331.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE92324 <- read.csv('processed_data/mdata.GSE92324.csv', sep = ',', header = T, row.names = 1)
+mdata.PRJNA314429 <- read.csv('processed_data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)
 
-exp.GSE103465 <- read.csv('processed.data/exp.GSE103465.max.csv', sep = ',', header = T, row.names = 1)
-exp.GSE106602 <- read.csv('processed.data/vst.GSE106602.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE188409 <- read.csv('processed.data/exp.GSE188409.max.csv', sep = ',', header = T, row.names = 1)
-exp.GSE205398 <- read.csv('processed.data/vst.GSE205398.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE207362 <- read.csv('processed.data/vst.GSE207362.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE243550 <- read.csv('processed.data/vst.GSE243550.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE26787 <- read.csv('processed.data/exp.GSE26787.max.csv', sep = ',', header = T, row.names = 1)
-exp.GSE58144.max.subset <- read.csv('processed.data/exp.GSE58144.max.subset.csv', sep = ',', header = T, row.names = 1)
-exp.GSE71331 <- read.csv('processed.data/exp.GSE71331.max.csv', sep = ',', header = T, row.names = 1)
-exp.GSE92324 <- read.csv('processed.data/exp.GSE92324.max.csv', sep = ',', header = T, row.names = 1)
-exp.PRJNA314429 <- read.csv('processed.data/vst.PRJNA314429.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE103465 <- read.csv('processed_data/exp.GSE103465.max.csv', sep = ',', header = T, row.names = 1)
+exp.GSE106602 <- read.csv('processed_data/vst.GSE106602.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE188409 <- read.csv('processed_data/exp.GSE188409.max.csv', sep = ',', header = T, row.names = 1)
+exp.GSE205398 <- read.csv('processed_data/vst.GSE205398.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE207362 <- read.csv('processed_data/vst.GSE207362.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE243550 <- read.csv('processed_data/vst.GSE243550.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE26787 <- read.csv('processed_data/exp.GSE26787.max.csv', sep = ',', header = T, row.names = 1)
+exp.GSE58144.max.subset <- read.csv('processed_data/exp.GSE58144.max.subset.csv', sep = ',', header = T, row.names = 1)
+exp.GSE71331 <- read.csv('processed_data/exp.GSE71331.max.csv', sep = ',', header = T, row.names = 1)
+exp.GSE92324 <- read.csv('processed_data/exp.GSE92324.max.csv', sep = ',', header = T, row.names = 1)
+exp.PRJNA314429 <- read.csv('processed_data/vst.PRJNA314429.mtx.csv', sep = ',', header = T, row.names = 1)
 
 
 ## GSE103465
@@ -2151,7 +2151,7 @@ ps2.12 <- wrap_plots(ps2.12a, ps2.12b, ncol = 2, widths = c(2, 1)) +
 ## Figure S2 panel
 ps2 <- wrap_plots(ps2.1, ps2.2, ps2.3, ps2.4, ps2.5, ps2.6,
                   ps2.7, ps2.8, ps2.9, ps2.10, ps2.11, ps2.12, ncol = 3)
-ggsave(plot = ps2, filename = 'visualization/Figure S2.png', width = 16, height = 12, dpi = 300)
+ggsave(plot = ps2, filename = 'visualization_raw/Figure S2.png', width = 16, height = 12, dpi = 300)
 
 
 
@@ -2161,21 +2161,21 @@ ggsave(plot = ps2, filename = 'visualization/Figure S2.png', width = 16, height 
 ### Figure 2 - Notable cases in analysis 
 
 # Select five datasets with the largest sample size 
-mdata.GSE103465 <- read.csv('processed.data/mdata.GSE103465.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE106602 <- read.csv('processed.data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)[, -9]
-mdata.GSE188409 <- read.csv('processed.data/mdata.GSE188409.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE205398 <- read.csv('processed.data/mdata.GSE205398.csv', sep = ',', header = T, row.names = 1)[, -9]
-mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)[, -9]
-mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)[, -9]
-mdata.GSE26787 <- read.csv('processed.data/mdata.GSE26787.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE58144.subset <- read.csv('processed.data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE103465 <- read.csv('processed_data/mdata.GSE103465.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE106602 <- read.csv('processed_data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE188409 <- read.csv('processed_data/mdata.GSE188409.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE205398 <- read.csv('processed_data/mdata.GSE205398.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE207362 <- read.csv('processed_data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE243550 <- read.csv('processed_data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE26787 <- read.csv('processed_data/mdata.GSE26787.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset <- read.csv('processed_data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE58144.subset.cohort1 <- subset(mdata.GSE58144.subset, Batch == 'Cohort 1')[, -9]
 mdata.GSE58144.subset.cohort1$GEO.accession <- 'GSE58144 - Cohort 1'
 mdata.GSE58144.subset.cohort2.batch1 <- subset(mdata.GSE58144.subset, Batch == 'Cohort 2, batch 1')[, -9]
 mdata.GSE58144.subset.cohort2.batch1$GEO.accession <- 'GSE58144 - Cohort 2, batch 1'
-mdata.GSE71331 <- read.csv('processed.data/mdata.GSE71331.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE92324 <- read.csv('processed.data/mdata.GSE92324.csv', sep = ',', header = T, row.names = 1)
-mdata.PRJNA314429 <- read.csv('processed.data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE71331 <- read.csv('processed_data/mdata.GSE71331.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE92324 <- read.csv('processed_data/mdata.GSE92324.csv', sep = ',', header = T, row.names = 1)
+mdata.PRJNA314429 <- read.csv('processed_data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)[, -9]
 
 mdata.merged <- rbind(mdata.GSE103465, mdata.GSE106602, mdata.GSE188409, mdata.GSE205398,
                       mdata.GSE207362, mdata.GSE243550, mdata.GSE26787, mdata.GSE58144.subset.cohort1,
@@ -2196,11 +2196,11 @@ table(mdata.merged$GEO.accession, mdata.merged$Phenotype) # all samples
 # GSE92324                           8  10 *
 # PRJNA314429                        3   5
 
-exp.GSE106602 <- read.csv('processed.data/vst.GSE106602.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE207362 <- read.csv('processed.data/vst.GSE207362.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE243550 <- read.csv('processed.data/vst.GSE243550.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE58144.subset <- read.csv('processed.data/exp.GSE58144.max.subset.csv', sep = ',', header = T, row.names = 1)
-exp.GSE92324 <- read.csv('processed.data/exp.GSE92324.max.csv', sep = ',', header = T, row.names = 1)
+exp.GSE106602 <- read.csv('processed_data/vst.GSE106602.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE207362 <- read.csv('processed_data/vst.GSE207362.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE243550 <- read.csv('processed_data/vst.GSE243550.mtx.csv', sep = ',', header = T, row.names = 1)
+exp.GSE58144.subset <- read.csv('processed_data/exp.GSE58144.max.subset.csv', sep = ',', header = T, row.names = 1)
+exp.GSE92324 <- read.csv('processed_data/exp.GSE92324.max.csv', sep = ',', header = T, row.names = 1)
 
 
 ## GSE106602
@@ -2965,10 +2965,10 @@ p2.line2 <- wrap_plots(p2d, p2e, p2f, ncol = 3, widths = c(1.3, 3.7, 3))
 p2.line3 <- wrap_plots(p2g, p2h, p2i, ncol = 3, widths = c(1.3, 3.7, 3))
 p2.line4 <- wrap_plots(p2j, p2k, p2l, ncol = 3, widths = c(1.3, 3.7, 3))
 p2lines1234 <- wrap_plots(p2.line1, p2.line2, p2.line3, p2.line4, nrow = 4)
-ggsave(plot = p2lines1234, filename = 'visualization/Figure 2 a-l.png', width = 14, height = 14, dpi = 300)
+ggsave(plot = p2lines1234, filename = 'visualization_raw/Figure 2 a-l.png', width = 14, height = 14, dpi = 300)
 
 p2.line5 <- wrap_plots(p2m, p2n, ncol = 2, widths = c(2, 4.7))
-ggsave(plot = p2.line5, filename = 'visualization/Figure 2 mn.png', width = 12, height = 2.5, dpi = 300)
+ggsave(plot = p2.line5, filename = 'visualization_raw/Figure 2 mn.png', width = 12, height = 2.5, dpi = 300)
 
 
 
@@ -3230,12 +3230,12 @@ p3d <- DotPlot(seu.PRJNA1141235.fig3, assay = 'RNA', features = marker.genes.df$
 
 gc()
 saveRDS(seu.PRJNA1141235.fig3, file.path('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig3.Rds'))
-write.csv(features.ids, 'processed.data/features.ids.csv')
-write.csv(marker.genes.df, 'processed.data/marker.genes.df.csv')
+write.csv(features.ids, 'processed_data/features.ids.csv')
+write.csv(marker.genes.df, 'processed_data/marker.genes.df.csv')
 # Use this files to replicate Figure 3 plots
 seu.PRJNA1141235.fig3 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig3.Rds')
-features.ids <- read.csv('processed.data/features.ids.csv')
-marker.genes.df <- read.csv('processed.data/marker.genes.df.csv')
+features.ids <- read.csv('processed_data/features.ids.csv')
+marker.genes.df <- read.csv('processed_data/marker.genes.df.csv')
 
 
 # Prepare reference for deconvolution
@@ -3254,7 +3254,7 @@ head(seu.PRJNA1141235.fig3.reference)
 seu.PRJNA1141235.fig3.reference$sum.exp <- rowSums(seu.PRJNA1141235.fig3.reference[, c(1:5)])
 seu.PRJNA1141235.fig3.reference.sliced <- seu.PRJNA1141235.fig3.reference %>% slice_max(sum.exp, n = 10000)
 seu.PRJNA1141235.fig3.reference.sliced <- seu.PRJNA1141235.fig3.reference.sliced[, c(1:5)]
-write.csv(seu.PRJNA1141235.fig3.reference.sliced, 'processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv')
+write.csv(seu.PRJNA1141235.fig3.reference.sliced, 'processed_data/seu.PRJNA1141235.fig3.reference.sliced.csv')
 
 
 
@@ -3262,20 +3262,20 @@ write.csv(seu.PRJNA1141235.fig3.reference.sliced, 'processed.data/seu.PRJNA11412
 
 # clone GitHub repository https://github.com/BNadel/GEDITExpanded
 # use python3 and run GEDITExpanded-main/GEDITv3.0/GEDIT3.py script in terminal as follows
-# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/exp.GSE111974.max.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE111974.dcnv.results
-# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/exp.GSE58144.max.subset.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE58144.subset.dcnv.results
-# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/vst.GSE207362.mtx.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE207362.dcnv.results
-# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/vst.GSE243550.mtx.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE243550.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed_data/exp.GSE111974.max.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed_data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed_data/GSE111974.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed_data/exp.GSE58144.max.subset.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed_data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed_data/GSE58144.subset.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed_data/vst.GSE207362.mtx.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed_data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed_data/GSE207362.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed_data/vst.GSE243550.mtx.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed_data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed_data/GSE243550.dcnv.results
 
-gedit_result.GSE111974 <- read.csv('processed.data/GSE111974.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
-gedit_result.GSE207362 <- read.csv('processed.data/GSE207362.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
-gedit_result.GSE243550 <- read.csv('processed.data/GSE243550.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
-gedit_result.GSE58144.subset <- read.csv('processed.data/GSE58144.subset.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
+gedit_result.GSE111974 <- read.csv('processed_data/GSE111974.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
+gedit_result.GSE207362 <- read.csv('processed_data/GSE207362.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
+gedit_result.GSE243550 <- read.csv('processed_data/GSE243550.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
+gedit_result.GSE58144.subset <- read.csv('processed_data/GSE58144.subset.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
 
-mdata.GSE111974 <- read.csv('processed.data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE58144.subset <- read.csv('processed.data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE111974 <- read.csv('processed_data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE207362 <- read.csv('processed_data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE243550 <- read.csv('processed_data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset <- read.csv('processed_data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
 
 mdata.GSE111974 <- cbind(mdata.GSE111974, gedit_result.GSE111974)
 mdata.GSE207362 <- cbind(mdata.GSE207362, gedit_result.GSE207362)
@@ -3460,7 +3460,7 @@ dea.dcnv.GSE58144.complex.subset2
 p3.line1 <- wrap_plots(p3a, p3b, p3c, p3d, ncol = 4, widths = c(1, 1, 1, 1.5))
 p3.line2 <- wrap_plots(p3e1, p3e2, p3e3, p3e4, p3e5, nrow = 5, heights = c(1, 1, 1, 1, 1))
 p3 <- wrap_plots(p3.line1, p3.line2, nrow = 2, heights = c(1, 6))
-ggsave(plot = p3, filename = 'visualization/Figure 3.png', width = 12, height = 15, dpi = 300)
+ggsave(plot = p3, filename = 'visualization_raw/Figure 3.png', width = 12, height = 15, dpi = 300)
 
 
 
@@ -3470,8 +3470,8 @@ ggsave(plot = p3, filename = 'visualization/Figure 3.png', width = 12, height = 
 
 ### Figure 4 & S3 - scRNAseq multi-dataset analysis
 
-features.ids <- read.csv('processed.data/features.ids.csv', sep = ',', header = T, row.names = 1)
-marker.genes.df <- read.csv('processed.data/marker.genes.df.csv', sep = ',', header = T, row.names = 1)
+features.ids <- read.csv('processed_data/features.ids.csv', sep = ',', header = T, row.names = 1)
+marker.genes.df <- read.csv('processed_data/marker.genes.df.csv', sep = ',', header = T, row.names = 1)
 marker.genes <- c(
   'EMCN', 'VWF', # Endothelial
   'EPCAM', 'CLDN3', # Epithelial
@@ -3912,7 +3912,7 @@ seu.GSE250130 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/
 ## Figure S3
 ps3 <- wrap_plots(ps3a, ps3b, ps3c, ps3d, ps3e, ps3f, ps3g, ps3h, ps3i, ncol = 3,
                   widths = c(0.9, 0.9, 1, 0.9, 0.9, 1, 0.9, 0.9, 1))
-ggsave(plot = ps3, filename = 'visualization/Figure S3.png', width = 14, height = 9, dpi = 300)
+ggsave(plot = ps3, filename = 'visualization_raw/Figure S3.png', width = 14, height = 9, dpi = 300)
 
 
 
@@ -3922,8 +3922,8 @@ ggsave(plot = ps3, filename = 'visualization/Figure S3.png', width = 14, height 
 seu.PRJNA1141235.fig4 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig4.Rds')
 seu.GSE250130 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE250130.Rds')
 seu.GSE183837 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE183837.Rds')
-features.ids <- read.csv('processed.data/features.ids.csv', sep = ',', header = T, row.names = 1)
-marker.genes.df <- read.csv('processed.data/marker.genes.df.csv', sep = ',', header = T, row.names = 1)
+features.ids <- read.csv('processed_data/features.ids.csv', sep = ',', header = T, row.names = 1)
+marker.genes.df <- read.csv('processed_data/marker.genes.df.csv', sep = ',', header = T, row.names = 1)
 rownames(features.ids) <- features.ids$ensg
 
 # PRJNA1141235 WOI subset
@@ -4717,8 +4717,8 @@ p4b <- wrap_plots(p4b11, p4b12,
                   p4b51, p4b52,
                   p4b61, p4b62, nrow = 6)
 p4 <- wrap_plots(p4a, p4b, ncol = 2, widths = c(1, 1.5))
-ggsave(plot = p4, filename = 'visualization/Figure 4 (1).png', width = 13, height = 9, dpi = 300)
-ggsave(plot = p4, filename = 'visualization/Figure 4 (2).png', width = 13, height = 13, dpi = 300)
+ggsave(plot = p4, filename = 'visualization_raw/Figure 4 (1).png', width = 13, height = 9, dpi = 300)
+ggsave(plot = p4, filename = 'visualization_raw/Figure 4 (2).png', width = 13, height = 13, dpi = 300)
 
 
 
@@ -4726,8 +4726,8 @@ ggsave(plot = p4, filename = 'visualization/Figure 4 (2).png', width = 13, heigh
 
 
 ## Graphical abstract
-mdata.GSE111974 <- read.csv('processed.data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
-exp.GSE111974 <- read.csv('processed.data/exp.GSE111974.max.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE111974 <- read.csv('processed_data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
+exp.GSE111974 <- read.csv('processed_data/exp.GSE111974.max.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE111974$PDZK1 <- as.numeric(exp.GSE111974['PDZK1', ])
 
 pgabs1 <- ggplot(mdata.GSE111974, aes(Phenotype, PDZK1, fill = Phenotype)) +
@@ -4758,5 +4758,5 @@ pgabs2 <- ggplot(mdata.GSE111974, aes(EndEst, PDZK1, color = Phenotype, fill = P
 wrap_plots(pgabs1, pgabs2, ncol = 2, widths = c(1, 3)) +
   plot_annotation(title = 'Differential expression analysis for an example gene\nbefore and after considering the menstrual cycle effect',
                   theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
-ggsave('visualization/GA.png', width = 6, height = 4.5, dpi = 600, limitsize = FALSE) 
+ggsave('visualization_raw/GA.png', width = 6, height = 4.5, dpi = 600, limitsize = FALSE) 
   

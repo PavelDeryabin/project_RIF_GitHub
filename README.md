@@ -9,7 +9,7 @@ Institute of Cytology of the Russian Academy of Science
 
 Main result:
 
-<img src="Graphical abstract.tif" width="800px" />
+<img src="visualization/GA.png" width="800px" />
 Inconsistent results in endometrial transcriptomics, particularly regarding recurrent implantation failure, stem from failing to account for the natural tissue dynamics. Our findings emphasise that adjusting for the menstrual cycle progression is essential for reliable differential gene expression analysis.
 
 Analysis of bulk microarray datasets is fully reproducible, analysis of bulk and single cell RNA sequencing datasets can be reproduced from the stage of processed expression matrices

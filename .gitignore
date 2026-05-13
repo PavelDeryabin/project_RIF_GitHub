@@ -7,3 +7,5 @@ renv/cache/
 .DS_Store
 *.swp
 .Rproj.user/
+.Rhistory
+.Rprofile

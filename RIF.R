@@ -22,7 +22,7 @@ library(gprofiler2)
 library(tximport)
 library(Seurat)
 library(SeuratWrappers)
-library(DoubletFinder) # remotes::install_github('chris-mcginnis-ucsf/DoubletFinder@3b420df')
+library(DoubletFinder)
 library(harmony)
 library(UCell)
 library(clusterProfiler)
@@ -38,7 +38,7 @@ library(ggVennDiagram)
 library(lemon)
 library(pals) 
 
-setwd('/home/pd/projects/project_RIF')
+setwd('/home/pd/projects/article_2025_RIF/project_RIF_GitHub/')
 
 writeLines(capture.output(sessionInfo()), 'sessionInfo.txt')
 
@@ -444,7 +444,7 @@ mdata.GSE58144$Phenotype <- mdata.GSE58144$characteristics_ch1.1
 mdata.GSE58144$Menstrual.cycle.time <- NA
 mdata.GSE58144$Menstrual.cycle.phase <- 'Secretory mid'
 mdata.GSE58144$Age.years <- mdata.GSE58144$characteristics_ch1.6
-mdata.GSE58144$batch <- mdata.GSE58144$`batch:ch1`
+mdata.GSE58144$Batch <- mdata.GSE58144$`batch:ch1`
 mdata.GSE58144 <- mdata.GSE58144[, c(63:71)]
 
 table(mdata.GSE58144$Phenotype)
@@ -476,7 +476,7 @@ dataset.GSE58144.soft_file@gsms[['GSM1402321']]@dataTable@table[['VALUE']][1:10]
 for (sample in colnames(exp.GSE58144)) {
   exp.GSE58144[, sample] <- dataset.GSE58144.soft_file@gsms[[sample]]@dataTable@table[['A_VALUE']]
 }
-boxplot(exp.GSE58144[, 1:10]) # Quantile normalized and batch corrected 1/2log2(sample*reference) - using these values
+boxplot(exp.GSE58144[, 1:10]) # Quantile normalized and corrected 1/2log2(sample*reference) - using these values
 
 # Extract features data
 fdata.GSE58144 <- fData(dataset.GSE58144)
@@ -512,47 +512,41 @@ ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = Phenotype)) +
        y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
        color = 'Phenotype')
 
-ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = batch)) +
+ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = Batch)) +
   geom_point(size=3) +
   labs(title = paste0('PCA ', mdata.GSE58144[1, 2]), 
        x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
        y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
-       color = 'batch')
+       color = 'Batch') # significant batch effect - considering it in DEA model further
 
-# Correct batch effect
-levels(as.factor(mdata.GSE58144$batch))
-batches <- sapply(mdata.GSE58144$batch, switch, 'cohort 1' = 1, 'cohort 2, batch 1' = 2, 'cohort 2, batch 2' = 3, USE.NAMES = F)
-exp.GSE58144.max.corrected <- ComBat(dat = as.matrix(exp.GSE58144.max), batch = batches)
-
-hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE58144.max.corrected))), 500))
-pc <- prcomp(t(exp.GSE58144.max.corrected[hvg, ]), center = TRUE, scale. = TRUE)
-pca <- as.data.frame(pc[5]$x)
-mdata.GSE58144$PC1 <- pca$PC1
-mdata.GSE58144$PC2 <- pca$PC2
-ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = Phenotype)) +
-  geom_point(size=3) +
-  labs(title = paste0('PCA ', mdata.GSE58144[1, 2]), 
-       x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
-       y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
-       color = 'Phenotype')
-
-ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = batch)) + # batch has been removed
-  geom_point(size=3) +
-  labs(title = paste0('PCA ', mdata.GSE58144[1, 2]), 
-       x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
-       y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
-       color = 'batch')
+# Remove batch 2 cohort 2 samples and check whether the Phenotype variable is balanced
+table(mdata.GSE58144$Phenotype, mdata.GSE58144$Batch)
+mdata.GSE58144.subset <- mdata.GSE58144 %>% filter(Batch != 'cohort 2, batch 2')
+exp.GSE58144.max.subset <- exp.GSE58144.max[, rownames(mdata.GSE58144.subset)]
 
 # Estimate relative menstrual cycle progression
-endest.results.GSE58144 <- estimate_cycle_time(exprs = as.matrix(exp.GSE58144.max.corrected),
-                                                entrez_ids = mapIds(org.Hs.eg.db,
-                                                                    keys = rownames(exp.GSE58144.max.corrected),
+endest.results.GSE58144.subset <- estimate_cycle_time(exprs = as.matrix(exp.GSE58144.max.subset),
+                                                      entrez_ids = mapIds(org.Hs.eg.db,
+                                                                    keys = rownames(exp.GSE58144.max.subset),
                                                                     column = 'ENTREZID',
                                                                     keytype = 'SYMBOL',
                                                                     multiVals = first))
-mdata.GSE58144$EndEst <- endest.results.GSE58144$estimated_time
+mdata.GSE58144.subset$EndEst <- endest.results.GSE58144.subset$estimated_time
 
-ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = EndEst)) + # now main variance is here
+hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE58144.max.subset))), 500))
+pc <- prcomp(t(exp.GSE58144.max.subset[hvg, ]), center = TRUE, scale. = TRUE)
+pca <- as.data.frame(pc[5]$x)
+mdata.GSE58144.subset$PC1 <- pca$PC1
+mdata.GSE58144.subset$PC2 <- pca$PC2
+
+ggplot(data = mdata.GSE58144.subset, aes(x = PC1, y = PC2, color = Batch)) +
+  geom_point(size=3) +
+  labs(title = paste0('PCA ', mdata.GSE58144.subset[1, 2]), 
+       x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
+       y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
+       color = 'Batch') # significant batch effect - considering it in DEA model further
+
+ggplot(data = mdata.GSE58144.subset, aes(x = PC1, y = PC2, color = EndEst)) + # now main variance is here
   geom_point(size=3) +
   labs(title = paste0('PCA ', mdata.GSE58144[1, 2]), 
        x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
@@ -560,9 +554,14 @@ ggplot(data = mdata.GSE58144, aes(x = PC1, y = PC2, color = EndEst)) + # now mai
        color = 'EndEst') + scale_color_viridis_c()
 
 # Save results
-mdata.GSE58144 <- mdata.GSE58144[ , -9]
-write.csv(mdata.GSE58144, file = 'processed.data/mdata.GSE58144.csv')
-write.csv(exp.GSE58144.max.corrected, 'processed.data/exp.GSE58144.max.corrected.csv')
+table(mdata.GSE58144.subset$Batch)
+mdata.GSE58144.subset <- mdata.GSE58144.subset %>%
+  mutate(Batch = case_when(
+    Batch == 'cohort 1' ~ 'Cohort 1',
+    Batch == 'cohort 2, batch 1' ~ 'Cohort 2, batch 1'))
+
+write.csv(mdata.GSE58144.subset, file = 'processed.data/mdata.GSE58144.subset.csv')
+write.csv(exp.GSE58144.max.subset, 'processed.data/exp.GSE58144.max.subset.csv')
 
 
 
@@ -675,100 +674,6 @@ write.csv(mdata.GSE71331, file = 'processed.data/mdata.GSE71331.csv')
 
 
 
-## GSE71835
-
-# Get the data
-dataset.GSE71835 <- getGEO('GSE71835')
-dataset.GSE71835
-dataset.GSE71835 <- dataset.GSE71835[[1]]
-
-# Extract and set mdata
-mdata.GSE71835 <- pData(dataset.GSE71835)
-View(mdata.GSE71835) # Look for possible batch variables
-mdata.GSE71835$names <- rownames(mdata.GSE71835)
-mdata.GSE71835$GEO.accession <- 'GSE71835'
-mdata.GSE71835$GSM.accession <- mdata.GSE71835$geo_accession
-mdata.GSE71835$Sample.name <- mdata.GSE71835$title
-mdata.GSE71835$Phenotype <- sub('_.*', '', mdata.GSE71835$`sample group and identifier:ch1`)
-mdata.GSE71835$Menstrual.cycle.time <- mdata.GSE71835$`sample collection day:ch1`
-mdata.GSE71835$Menstrual.cycle.phase <- 'Secretory mid'
-mdata.GSE71835$Age.years <- mdata.GSE71835$`age:ch1`
-mdata.GSE71835 <- mdata.GSE71835[, c(39:46)]
-
-table(mdata.GSE71835$Phenotype)
-mdata.GSE71835 <- mdata.GSE71835 %>%
-  mutate(Phenotype = case_when(
-    Phenotype %in% c('control') ~ 'Fertile',
-    Phenotype %in% c('case') ~ 'RIF'))
-
-# Extract exp mtx
-exp.GSE71835 <- exprs(dataset.GSE71835)
-class(exp.GSE71835)
-dim(exp.GSE71835)
-exp.GSE71835[1:5, 1:5]
-boxplot(exp.GSE71835) # GEO: The data was analysed using Genome studio software 2011. QN was used to normalize the data
-exp.GSE71835 <- log2(exp.GSE71835 + abs(min(exp.GSE71835)) + 1) # adjusting values to become positive and log2 transforming
-boxplot(exp.GSE71835) 
-
-# Extract features data
-fdata.GSE71835 <- fData(dataset.GSE71835)
-head(fdata.GSE71835)
-
-# Annotate exp mtx by genes symbols, select probes with max mean value across the samples and set rownames to symbols
-exp.GSE71835 <- as.data.frame(exp.GSE71835)
-exp.GSE71835[1:5, ]
-exp.GSE71835$GENE_SYMBOL <- as.character(fdata.GSE71835$ILMN_Gene)
-exp.GSE71835$rowMean <- rowMeans(exp.GSE71835[, 1:12])
-head(exp.GSE71835)
-
-exp.GSE71835.max <- exp.GSE71835 %>% arrange(GENE_SYMBOL, -rowMean) %>% group_by(GENE_SYMBOL) %>% slice_head(n = 1) %>% as.data.frame()
-head(exp.GSE71835.max)
-
-sum(duplicated(fdata.GSE71835$ILMN_Gene))
-sum(duplicated(exp.GSE71835$GENE_SYMBOL))
-sum(duplicated(exp.GSE71835.max$GENE_SYMBOL))
-rownames(exp.GSE71835.max) <- exp.GSE71835.max$GENE_SYMBOL
-rownames(exp.GSE71835.max)[1:50]
-exp.GSE71835.max <- exp.GSE71835.max[-c(1:13), c(1:12)] # remove uninformative features and technical columns
-head(exp.GSE71835.max) # clean exp mtx
-boxplot(exp.GSE71835.max)
-
-
-# EDA
-hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE71835.max))), 500))
-pc <- prcomp(t(exp.GSE71835.max[hvg, ]), center = TRUE, scale. = TRUE)
-pca <- as.data.frame(pc[5]$x)
-mdata.GSE71835$PC1 <- pca$PC1
-mdata.GSE71835$PC2 <- pca$PC2
-ggplot(data = mdata.GSE71835, aes(x = PC1, y = PC2, color = Phenotype)) +
-  geom_point(size=3) +
-  labs(title = paste0('PCA ', mdata.GSE71835[1, 2]), 
-       x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
-       y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
-       color = 'Phenotype')
-
-# Estimate relative menstrual cycle progression
-endest.results.GSE71835 <- estimate_cycle_time(exprs = as.matrix(exp.GSE71835.max),
-                                               entrez_ids = mapIds(org.Hs.eg.db,
-                                                                   keys = rownames(exp.GSE71835.max),
-                                                                   column = 'ENTREZID',
-                                                                   keytype = 'SYMBOL',
-                                                                   multiVals = first))
-mdata.GSE71835$EndEst <- endest.results.GSE71835$estimated_time
-
-ggplot(data = mdata.GSE71835, aes(x = PC1, y = PC2, color = EndEst)) +
-  geom_point(size=3) +
-  labs(title = paste0('PCA ', mdata.GSE71835[1, 2]), 
-       x = paste0('PC1: ', round((summary(pc))$importance[2,1], 4) * 100, '% variance'),
-       y = paste0('PC2: ', round((summary(pc))$importance[2,2], 4) * 100, '% variance'),
-       color = 'EndEst') + scale_color_viridis_c()
-
-# Save results
-write.csv(exp.GSE71835.max, 'processed.data/exp.GSE71835.max.csv')
-write.csv(mdata.GSE71835, file = 'processed.data/mdata.GSE71835.csv')
-
-
-
 ## GSE92324
 
 # Get the data
@@ -878,9 +783,10 @@ mdata.PRJNA314429$Menstrual.cycle.phase <- 'Secretory mid'
 mdata.PRJNA314429$Age.years <- mdata.PRJNA314429$Age
 mdata.PRJNA314429$files <- file.path('/home/pd/datasets/hs_endometrium/bulk_rna_seq/PRJNA314429/quants/', mdata.PRJNA314429$names, 'quant.sf')
 file.exists(mdata.PRJNA314429$files)
-mdata.PRJNA314429 <- subset(mdata.PRJNA314429, Phenotype != 'RM')
+mdata.PRJNA314429 <- mdata.PRJNA314429[, c(31:39)]
 
 table(mdata.PRJNA314429$Phenotype)
+mdata.PRJNA314429 <- subset(mdata.PRJNA314429, Phenotype != 'RM') # keep only Fertile and RIF samples
 mdata.PRJNA314429 <- mdata.PRJNA314429 %>%
   mutate(Phenotype = case_when(
     Phenotype %in% c('C') ~ 'Fertile',
@@ -892,29 +798,18 @@ gse.PRJNA314429 <- summarizeToGene(se.PRJNA314429)
 gse.PRJNA314429 <- addIds(gse.PRJNA314429, 'SYMBOL', gene = TRUE)
 ddsTC.PRJNA314429 <- DESeqDataSet(gse.PRJNA314429, design = ~ 1) # no adjustment of variation
 
-keep.PRJNA314429 <- rowSums(counts(ddsTC.PRJNA314429) >= 1) >= (ncol(counts(ddsTC.PRJNA314429)) / 1)
-table(keep.PRJNA314429)
-counts.PRJNA314429 <- counts(ddsTC.PRJNA314429)[keep.PRJNA314429, ] # remove genes with zero expression across samples
-
-ids.df.PRJNA314429 <- data.frame(ensembl = rownames(counts.PRJNA314429),
-                                 symbol = mapIds(org.Hs.eg.db,
-                                     keys = substr(rownames(counts.PRJNA314429), 1, 15),
-                                     column = 'SYMBOL',
-                                     keytype = 'ENSEMBL',
-                                     multiVals = first))
-ids.df.PRJNA314429 <- ids.df.PRJNA314429[!(duplicated(ids.df.PRJNA314429$symbol)) & !(is.na(ids.df.PRJNA314429$symbol)), ] # remove genes without symbol identifiers
-counts.PRJNA314429 <- counts.PRJNA314429[ids.df.PRJNA314429$ensembl, ]
-rownames(counts.PRJNA314429) <- ids.df.PRJNA314429$symbol
-
-ddsTC.PRJNA314429 <- DESeqDataSetFromMatrix(countData = counts.PRJNA314429, colData = mdata.PRJNA314429[, c(31:38)], design = ~ 1)
-vst.PRJNA314429 <- DESeq2::vst(ddsTC.PRJNA314429, blind = TRUE)
-
-mdata.PRJNA314429 <- mdata.PRJNA314429[, c(31:38)]
-vst.PRJNA314429.mtx <- assay(vst.PRJNA314429)
-boxplot(vst.PRJNA314429.mtx)
+# Keep features having maximum expression per known gene symbol identifier and at least 1 count in all samples
+ddsTC.PRJNA314429 <- ddsTC.PRJNA314429[order(rowMeans(assay(ddsTC.PRJNA314429)), decreasing = TRUE), ]
+ddsTC.PRJNA314429 <- ddsTC.PRJNA314429[
+  !duplicated(rowData(ddsTC.PRJNA314429)$SYMBOL) & !(is.na(rowData(ddsTC.PRJNA314429)$SYMBOL)), ]
+rownames(ddsTC.PRJNA314429) <- rowData(ddsTC.PRJNA314429)$SYMBOL
+ddsTC.PRJNA314429 <- ddsTC.PRJNA314429[rowSums(counts(ddsTC.PRJNA314429) >= 1) >= ncol(counts(ddsTC.PRJNA314429)), ]
 
 # EDA
-hvg <- names(tail(sort(rowVars(as.matrix(vst.PRJNA314429.mtx))), 500))
+vst.PRJNA314429.mtx <- assay(DESeq2::vst(ddsTC.PRJNA314429, blind = TRUE))
+boxplot(vst.PRJNA314429.mtx)
+
+hvg <- names(tail(sort(rowVars(vst.PRJNA314429.mtx)), 500))
 pc <- prcomp(t(vst.PRJNA314429.mtx[hvg, ]), center = TRUE, scale. = TRUE)
 pca <- as.data.frame(pc[5]$x)
 mdata.PRJNA314429$PC1 <- pca$PC1
@@ -928,8 +823,8 @@ ggplot(data = mdata.PRJNA314429, aes(x = PC1, y = PC2, color = Phenotype)) +
        color = 'Phenotype')
 
 # Estimate relative menstrual cycle progression
-endest.results.PRJNA314429 <- estimate_cycle_time(exprs = as.matrix(vst.PRJNA314429.mtx),
-                                               entrez_ids = mapIds(org.Hs.eg.db,
+endest.results.PRJNA314429 <- estimate_cycle_time(exprs = vst.PRJNA314429.mtx,
+                                                  entrez_ids = mapIds(org.Hs.eg.db,
                                                                    keys = rownames(vst.PRJNA314429.mtx),
                                                                    column = 'ENTREZID',
                                                                    keytype = 'SYMBOL',
@@ -967,9 +862,9 @@ mdata.GSE106602$Menstrual.cycle.phase <- 'Secretory mid'
 mdata.GSE106602$Age.years <- NA
 mdata.GSE106602$files <- file.path('/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE106602/quants/', mdata.GSE106602$names, 'quant.sf')
 file.exists(mdata.GSE106602$files)
-mdata.GSE106602$batch <- mdata.GSE106602$Sequencing_batch
+mdata.GSE106602$Batch <- mdata.GSE106602$Sequencing_batch
 table(mdata.GSE106602$Phenotype, mdata.GSE106602$Menstrual.cycle.time)
-table(subset(mdata.GSE106602, Menstrual.cycle.time == 'LH+7')$batch)
+table(subset(mdata.GSE106602, Menstrual.cycle.time == 'LH+7')$Batch)
 mdata.GSE106602 <- subset(mdata.GSE106602, Menstrual.cycle.time == 'LH+7') # interesting samples are within one batch
 mdata.GSE106602 <- mdata.GSE106602[ , c(9:17)]
 
@@ -985,29 +880,18 @@ gse.GSE106602 <- summarizeToGene(se.GSE106602)
 gse.GSE106602 <- addIds(gse.GSE106602, 'SYMBOL', gene = TRUE)
 ddsTC.GSE106602 <- DESeqDataSet(gse.GSE106602, design = ~ 1) # no adjustment of variation
 
-keep.GSE106602 <- rowSums(counts(ddsTC.GSE106602) >= 1) >= (ncol(counts(ddsTC.GSE106602)) / 1)
-table(keep.GSE106602)
-counts.GSE106602 <- counts(ddsTC.GSE106602)[keep.GSE106602, ] # remove genes with zero expression across every sample
-
-ids.df.GSE106602 <- data.frame(ensembl = rownames(counts.GSE106602),
-                                 symbol = mapIds(org.Hs.eg.db,
-                                                 keys = substr(rownames(counts.GSE106602), 1, 15),
-                                                 column = 'SYMBOL',
-                                                 keytype = 'ENSEMBL',
-                                                 multiVals = first))
-ids.df.GSE106602 <- ids.df.GSE106602[!(duplicated(ids.df.GSE106602$symbol)) & !(is.na(ids.df.GSE106602$symbol)), ] # remove genes without symbol identifiers
-counts.GSE106602 <- counts.GSE106602[ids.df.GSE106602$ensembl, ]
-rownames(counts.GSE106602) <- ids.df.GSE106602$symbol
-
-ddsTC.GSE106602 <- DESeqDataSetFromMatrix(countData = counts.GSE106602, colData = mdata.GSE106602[, c(1:8)], design = ~ 1)
-vst.GSE106602 <- DESeq2::vst(ddsTC.GSE106602, blind = TRUE)
-
-mdata.GSE106602 <- mdata.GSE106602[, c(1:8)]
-vst.GSE106602.mtx <- assay(vst.GSE106602)
-boxplot(vst.GSE106602.mtx)
+# Keep features having maximum expression per known gene symbol identifier and at least 1 count in all samples
+ddsTC.GSE106602 <- ddsTC.GSE106602[order(rowMeans(assay(ddsTC.GSE106602)), decreasing = TRUE), ]
+ddsTC.GSE106602 <- ddsTC.GSE106602[
+  !duplicated(rowData(ddsTC.GSE106602)$SYMBOL) & !(is.na(rowData(ddsTC.GSE106602)$SYMBOL)), ]
+rownames(ddsTC.GSE106602) <- rowData(ddsTC.GSE106602)$SYMBOL
+ddsTC.GSE106602 <- ddsTC.GSE106602[rowSums(counts(ddsTC.GSE106602) >= 1) >= ncol(counts(ddsTC.GSE106602)), ]
 
 # EDA
-hvg <- names(tail(sort(rowVars(as.matrix(vst.GSE106602.mtx))), 500))
+vst.GSE106602.mtx <- assay(DESeq2::vst(ddsTC.GSE106602, blind = TRUE))
+boxplot(vst.GSE106602.mtx)
+
+hvg <- names(tail(sort(rowVars(vst.GSE106602.mtx)), 500))
 pc <- prcomp(t(vst.GSE106602.mtx[hvg, ]), center = TRUE, scale. = TRUE)
 pca <- as.data.frame(pc[5]$x)
 mdata.GSE106602$PC1 <- pca$PC1
@@ -1021,7 +905,7 @@ ggplot(data = mdata.GSE106602, aes(x = PC1, y = PC2, color = Phenotype)) +
        color = 'Phenotype')
 
 # Estimate relative menstrual cycle progression
-endest.results.GSE106602 <- estimate_cycle_time(exprs = as.matrix(vst.GSE106602.mtx),
+endest.results.GSE106602 <- estimate_cycle_time(exprs = vst.GSE106602.mtx,
                                                   entrez_ids = mapIds(org.Hs.eg.db,
                                                                       keys = rownames(vst.GSE106602.mtx),
                                                                       column = 'ENTREZID',
@@ -1072,29 +956,18 @@ gse.GSE205398 <- summarizeToGene(se.GSE205398)
 gse.GSE205398 <- addIds(gse.GSE205398, 'SYMBOL', gene = TRUE)
 ddsTC.GSE205398 <- DESeqDataSet(gse.GSE205398, design = ~ 1) # no adjustment of variation
 
-keep.GSE205398 <- rowSums(counts(ddsTC.GSE205398) >= 1) >= (ncol(counts(ddsTC.GSE205398)) / 1)
-table(keep.GSE205398)
-counts.GSE205398 <- counts(ddsTC.GSE205398)[keep.GSE205398, ] # remove genes with zero expression across every sample
-
-ids.df.GSE205398 <- data.frame(ensembl = rownames(counts.GSE205398),
-                               symbol = mapIds(org.Hs.eg.db,
-                                               keys = substr(rownames(counts.GSE205398), 1, 15),
-                                               column = 'SYMBOL',
-                                               keytype = 'ENSEMBL',
-                                               multiVals = first))
-ids.df.GSE205398 <- ids.df.GSE205398[!(duplicated(ids.df.GSE205398$symbol)) & !(is.na(ids.df.GSE205398$symbol)), ] # remove genes without symbol identifiers
-counts.GSE205398 <- counts.GSE205398[ids.df.GSE205398$ensembl, ]
-rownames(counts.GSE205398) <- ids.df.GSE205398$symbol
-
-ddsTC.GSE205398 <- DESeqDataSetFromMatrix(countData = counts.GSE205398, colData = mdata.GSE205398[, c(1:8)], design = ~ 1)
-vst.GSE205398 <- DESeq2::vst(ddsTC.GSE205398, blind = TRUE)
-
-mdata.GSE205398 <- mdata.GSE205398[, c(1:8)]
-vst.GSE205398.mtx <- assay(vst.GSE205398)
-boxplot(vst.GSE205398.mtx)
+# Keep features having maximum expression per known gene symbol identifier and at least 1 count in all samples
+ddsTC.GSE205398 <- ddsTC.GSE205398[order(rowMeans(assay(ddsTC.GSE205398)), decreasing = TRUE), ]
+ddsTC.GSE205398 <- ddsTC.GSE205398[
+  !duplicated(rowData(ddsTC.GSE205398)$SYMBOL) & !(is.na(rowData(ddsTC.GSE205398)$SYMBOL)), ]
+rownames(ddsTC.GSE205398) <- rowData(ddsTC.GSE205398)$SYMBOL
+ddsTC.GSE205398 <- ddsTC.GSE205398[rowSums(counts(ddsTC.GSE205398) >= 1) >= ncol(counts(ddsTC.GSE205398)), ]
 
 # EDA
-hvg <- names(tail(sort(rowVars(as.matrix(vst.GSE205398.mtx))), 500))
+vst.GSE205398.mtx <- assay(DESeq2::vst(ddsTC.GSE205398, blind = TRUE))
+boxplot(vst.GSE205398.mtx)
+
+hvg <- names(tail(sort(rowVars(vst.GSE205398.mtx)), 500))
 pc <- prcomp(t(vst.GSE205398.mtx[hvg, ]), center = TRUE, scale. = TRUE)
 pca <- as.data.frame(pc[5]$x)
 mdata.GSE205398$PC1 <- pca$PC1
@@ -1108,7 +981,7 @@ ggplot(data = mdata.GSE205398, aes(x = PC1, y = PC2, color = Phenotype)) +
        color = 'Phenotype')
 
 # Estimate relative menstrual cycle progression
-endest.results.GSE205398 <- estimate_cycle_time(exprs = as.matrix(vst.GSE205398.mtx),
+endest.results.GSE205398 <- estimate_cycle_time(exprs = vst.GSE205398.mtx,
                                                 entrez_ids = mapIds(org.Hs.eg.db,
                                                                     keys = rownames(vst.GSE205398.mtx),
                                                                     column = 'ENTREZID',
@@ -1173,29 +1046,18 @@ gse.GSE207362 <- summarizeToGene(se.GSE207362)
 gse.GSE207362 <- addIds(gse.GSE207362, 'SYMBOL', gene = TRUE)
 ddsTC.GSE207362 <- DESeqDataSet(gse.GSE207362, design = ~ 1) # no adjustment of variation
 
-keep.GSE207362 <- rowSums(counts(ddsTC.GSE207362) >= 1) >= (ncol(counts(ddsTC.GSE207362)) / 1)
-table(keep.GSE207362)
-counts.GSE207362 <- counts(ddsTC.GSE207362)[keep.GSE207362, ] # remove genes with zero expression across every sample
-
-ids.df.GSE207362 <- data.frame(ensembl = rownames(counts.GSE207362),
-                               symbol = mapIds(org.Hs.eg.db,
-                                               keys = substr(rownames(counts.GSE207362), 1, 15),
-                                               column = 'SYMBOL',
-                                               keytype = 'ENSEMBL',
-                                               multiVals = first))
-ids.df.GSE207362 <- ids.df.GSE207362[!(duplicated(ids.df.GSE207362$symbol)) & !(is.na(ids.df.GSE207362$symbol)), ] # remove genes without symbol identifiers
-counts.GSE207362 <- counts.GSE207362[ids.df.GSE207362$ensembl, ]
-rownames(counts.GSE207362) <- ids.df.GSE207362$symbol
-
-ddsTC.GSE207362 <- DESeqDataSetFromMatrix(countData = counts.GSE207362, colData = mdata.GSE207362[, c(1:8)], design = ~ 1)
-vst.GSE207362 <- DESeq2::vst(ddsTC.GSE207362, blind = TRUE)
-
-mdata.GSE207362 <- mdata.GSE207362[, c(1:8)]
-vst.GSE207362.mtx <- assay(vst.GSE207362)
-boxplot(vst.GSE207362.mtx)
+# Keep features having maximum expression per known gene symbol identifier and at least 1 count in all samples
+ddsTC.GSE207362 <- ddsTC.GSE207362[order(rowMeans(assay(ddsTC.GSE207362)), decreasing = TRUE), ]
+ddsTC.GSE207362 <- ddsTC.GSE207362[
+  !duplicated(rowData(ddsTC.GSE207362)$SYMBOL) & !(is.na(rowData(ddsTC.GSE207362)$SYMBOL)), ]
+rownames(ddsTC.GSE207362) <- rowData(ddsTC.GSE207362)$SYMBOL
+ddsTC.GSE207362 <- ddsTC.GSE207362[rowSums(counts(ddsTC.GSE207362) >= 1) >= ncol(counts(ddsTC.GSE207362)), ]
 
 # EDA
-hvg <- names(tail(sort(rowVars(as.matrix(vst.GSE207362.mtx))), 500))
+vst.GSE207362.mtx <- assay(DESeq2::vst(ddsTC.GSE207362, blind = TRUE))
+boxplot(vst.GSE207362.mtx)
+
+hvg <- names(tail(sort(rowVars(vst.GSE207362.mtx)), 500))
 pc <- prcomp(t(vst.GSE207362.mtx[hvg, ]), center = TRUE, scale. = TRUE)
 pca <- as.data.frame(pc[5]$x)
 mdata.GSE207362$PC1 <- pca$PC1
@@ -1209,7 +1071,7 @@ ggplot(data = mdata.GSE207362, aes(x = PC1, y = PC2, color = Phenotype)) +
        color = 'Phenotype')
 
 # Estimate relative menstrual cycle progression
-endest.results.GSE207362 <- estimate_cycle_time(exprs = as.matrix(vst.GSE207362.mtx),
+endest.results.GSE207362 <- estimate_cycle_time(exprs = vst.GSE207362.mtx,
                                                 entrez_ids = mapIds(org.Hs.eg.db,
                                                                     keys = rownames(vst.GSE207362.mtx),
                                                                     column = 'ENTREZID',
@@ -1260,34 +1122,23 @@ gse.GSE243550 <- summarizeToGene(se.GSE243550)
 gse.GSE243550 <- addIds(gse.GSE243550, 'SYMBOL', gene = TRUE)
 ddsTC.GSE243550 <- DESeqDataSet(gse.GSE243550, design = ~ 1) # no adjustment of variation
 
-keep.GSE243550 <- rowSums(counts(ddsTC.GSE243550) >= 1) >= (ncol(counts(ddsTC.GSE243550)) / 1)
-table(keep.GSE243550)
-counts.GSE243550 <- counts(ddsTC.GSE243550)[keep.GSE243550, ] # remove genes with zero expression across every sample
-
-ids.df.GSE243550 <- data.frame(ensembl = rownames(counts.GSE243550),
-                               symbol = mapIds(org.Hs.eg.db,
-                                               keys = substr(rownames(counts.GSE243550), 1, 15),
-                                               column = 'SYMBOL',
-                                               keytype = 'ENSEMBL',
-                                               multiVals = first))
-ids.df.GSE243550 <- ids.df.GSE243550[!(duplicated(ids.df.GSE243550$symbol)) & !(is.na(ids.df.GSE243550$symbol)), ] # remove genes without symbol identifiers
-counts.GSE243550 <- counts.GSE243550[ids.df.GSE243550$ensembl, ]
-rownames(counts.GSE243550) <- ids.df.GSE243550$symbol
-
-ddsTC.GSE243550 <- DESeqDataSetFromMatrix(countData = counts.GSE243550, colData = mdata.GSE243550[, c(1:8)], design = ~ 1)
-vst.GSE243550 <- DESeq2::vst(ddsTC.GSE243550, blind = TRUE)
-
-mdata.GSE243550 <- mdata.GSE243550[, c(1:8)]
-vst.GSE243550.mtx <- assay(vst.GSE243550)
-boxplot(vst.GSE243550.mtx)
+# Keep features having maximum expression per known gene symbol identifier and at least 1 count in all samples
+ddsTC.GSE243550 <- ddsTC.GSE243550[order(rowMeans(assay(ddsTC.GSE243550)), decreasing = TRUE), ]
+ddsTC.GSE243550 <- ddsTC.GSE243550[
+  !duplicated(rowData(ddsTC.GSE243550)$SYMBOL) & !(is.na(rowData(ddsTC.GSE243550)$SYMBOL)), ]
+rownames(ddsTC.GSE243550) <- rowData(ddsTC.GSE243550)$SYMBOL
+ddsTC.GSE243550 <- ddsTC.GSE243550[rowSums(counts(ddsTC.GSE243550) >= 1) >= ncol(counts(ddsTC.GSE243550)), ]
 
 # EDA
-hvg <- names(tail(sort(rowVars(as.matrix(vst.GSE243550.mtx))), 500))
+vst.GSE243550.mtx <- assay(DESeq2::vst(ddsTC.GSE243550, blind = TRUE))
+boxplot(vst.GSE243550.mtx)
+
+hvg <- names(tail(sort(rowVars(vst.GSE243550.mtx)), 500))
 pc <- prcomp(t(vst.GSE243550.mtx[hvg, ]), center = TRUE, scale. = TRUE)
 pca <- as.data.frame(pc[5]$x)
 mdata.GSE243550$PC1 <- pca$PC1
 mdata.GSE243550$PC2 <- pca$PC2
-# no need to apply batch correction, but there is outlier
+# there is a possible outlier
 ggplot(data = mdata.GSE243550, aes(x = PC1, y = PC2, color = Phenotype)) +
   geom_point(size=3) +
   labs(title = paste0('PCA ', mdata.GSE243550[1, 2]), 
@@ -1296,7 +1147,7 @@ ggplot(data = mdata.GSE243550, aes(x = PC1, y = PC2, color = Phenotype)) +
        color = 'Phenotype')
 
 # Estimate relative menstrual cycle progression
-endest.results.GSE243550 <- estimate_cycle_time(exprs = as.matrix(vst.GSE243550.mtx),
+endest.results.GSE243550 <- estimate_cycle_time(exprs = vst.GSE243550.mtx,
                                                 entrez_ids = mapIds(org.Hs.eg.db,
                                                                     keys = rownames(vst.GSE243550.mtx),
                                                                     column = 'ENTREZID',
@@ -1784,8 +1635,7 @@ ggsave(plot = ps1, filename = 'visualization/Figure S1.png', width = 10, height 
 
 
 
-### Supplementary figure 2 - PCA and boxplots by EndEst and Phenotype for remaining twelve GEO datasets
-### UPD - GSE71835 and GSE92324 contain same samples, retain GSE92324 in final analysis 
+### Supplementary figure 2 - PCA and boxplots by EndEst and Phenotype for the remaining eleven GEO datasets
 
 mdata.GSE103465 <- read.csv('processed.data/mdata.GSE103465.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE106602 <- read.csv('processed.data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)
@@ -1794,9 +1644,8 @@ mdata.GSE205398 <- read.csv('processed.data/mdata.GSE205398.csv', sep = ',', hea
 mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE26787 <- read.csv('processed.data/mdata.GSE26787.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE58144 <- read.csv('processed.data/mdata.GSE58144.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset <- read.csv('processed.data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE71331 <- read.csv('processed.data/mdata.GSE71331.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE71835 <- read.csv('processed.data/mdata.GSE71835.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE92324 <- read.csv('processed.data/mdata.GSE92324.csv', sep = ',', header = T, row.names = 1)
 mdata.PRJNA314429 <- read.csv('processed.data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)
 
@@ -1807,9 +1656,8 @@ exp.GSE205398 <- read.csv('processed.data/vst.GSE205398.mtx.csv', sep = ',', hea
 exp.GSE207362 <- read.csv('processed.data/vst.GSE207362.mtx.csv', sep = ',', header = T, row.names = 1)
 exp.GSE243550 <- read.csv('processed.data/vst.GSE243550.mtx.csv', sep = ',', header = T, row.names = 1)
 exp.GSE26787 <- read.csv('processed.data/exp.GSE26787.max.csv', sep = ',', header = T, row.names = 1)
-exp.GSE58144 <- read.csv('processed.data/exp.GSE58144.max.corrected.csv', sep = ',', header = T, row.names = 1)
+exp.GSE58144.max.subset <- read.csv('processed.data/exp.GSE58144.max.subset.csv', sep = ',', header = T, row.names = 1)
 exp.GSE71331 <- read.csv('processed.data/exp.GSE71331.max.csv', sep = ',', header = T, row.names = 1)
-exp.GSE71835 <- read.csv('processed.data/exp.GSE71835.max.csv', sep = ',', header = T, row.names = 1)
 exp.GSE92324 <- read.csv('processed.data/exp.GSE92324.max.csv', sep = ',', header = T, row.names = 1)
 exp.PRJNA314429 <- read.csv('processed.data/vst.PRJNA314429.mtx.csv', sep = ',', header = T, row.names = 1)
 
@@ -1834,7 +1682,8 @@ ps2.1a <- ggplot(mdata.GSE103465, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE103465)
@@ -1849,7 +1698,7 @@ ps2.1b <- ggplot(mdata.GSE103465, aes(Phenotype, EndEst)) +
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.1 <- wrap_plots(ps2.1a, ps2.1b, ncol = 2, widths = c(3, 1)) +
+ps2.1 <- wrap_plots(ps2.1a, ps2.1b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE103465', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -1873,7 +1722,8 @@ ps2.2a <- ggplot(mdata.GSE106602, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 2), shape = guide_legend(order = 1))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE106602)
@@ -1881,14 +1731,14 @@ ps2.2b <- ggplot(mdata.GSE106602, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 0.024', x = 'Phenotype', y = 'EndEst') +
+  labs(title = 'p = 0.026', x = 'Phenotype', y = 'EndEst') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.2 <- wrap_plots(ps2.2a, ps2.2b, ncol = 2, widths = c(3, 1)) +
+ps2.2 <- wrap_plots(ps2.2a, ps2.2b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE106602', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -1912,7 +1762,8 @@ ps2.3a <- ggplot(mdata.GSE188409, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE188409)
@@ -1927,7 +1778,7 @@ ps2.3b <- ggplot(mdata.GSE188409, aes(Phenotype, EndEst)) +
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.3 <- wrap_plots(ps2.3a, ps2.3b, ncol = 2, widths = c(3, 1)) +
+ps2.3 <- wrap_plots(ps2.3a, ps2.3b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE188409', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -1951,7 +1802,8 @@ ps2.4a <- ggplot(mdata.GSE205398, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE205398)
@@ -1959,14 +1811,14 @@ ps2.4b <- ggplot(mdata.GSE205398, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 0.441', x = 'Phenotype', y = 'EndEst') +
+  labs(title = 'p = 0.456', x = 'Phenotype', y = 'EndEst') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.4 <- wrap_plots(ps2.4a, ps2.4b, ncol = 2, widths = c(3, 1)) +
+ps2.4 <- wrap_plots(ps2.4a, ps2.4b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE205398', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -1990,7 +1842,8 @@ ps2.5a <- ggplot(mdata.GSE207362, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE207362)
@@ -1998,14 +1851,14 @@ ps2.5b <- ggplot(mdata.GSE207362, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 0.273', x = 'Phenotype', y = 'EndEst') +
+  labs(title = 'p = 0.301', x = 'Phenotype', y = 'EndEst') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.5 <- wrap_plots(ps2.5a, ps2.5b, ncol = 2, widths = c(3, 1)) +
+ps2.5 <- wrap_plots(ps2.5a, ps2.5b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE207362', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -2029,7 +1882,8 @@ ps2.6a <- ggplot(mdata.GSE243550, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE243550)
@@ -2037,14 +1891,14 @@ ps2.6b <- ggplot(mdata.GSE243550, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 0.138', x = 'Phenotype', y = 'EndEst') +
+  labs(title = 'p = 0.142', x = 'Phenotype', y = 'EndEst') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.6 <- wrap_plots(ps2.6a, ps2.6b, ncol = 2, widths = c(3, 1)) +
+ps2.6 <- wrap_plots(ps2.6a, ps2.6b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE243550', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -2068,7 +1922,8 @@ ps2.7a <- ggplot(mdata.GSE26787, aes(x = PC1, y = PC2, fill = EndEst, shape = Ph
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE26787)
@@ -2083,22 +1938,26 @@ ps2.7b <- ggplot(mdata.GSE26787, aes(Phenotype, EndEst)) +
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.7 <- wrap_plots(ps2.7a, ps2.7b, ncol = 2, widths = c(3, 1)) +
+ps2.7 <- wrap_plots(ps2.7a, ps2.7b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE26787', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
-## GSE58144
-hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE58144))), 500))
-pc.RIF.GSE58144 <- prcomp(t(exp.GSE58144[hvg, ]), center = TRUE, scale. = TRUE)
-mdata.GSE58144$PC1 <- as.data.frame(pc.RIF.GSE58144[5]$x)$PC1
-mdata.GSE58144$PC2 <- as.data.frame(pc.RIF.GSE58144[5]$x)$PC2
+## GSE58144 - Cohort 1
+table(mdata.GSE58144.subset$Batch)
+mdata.GSE58144.subset.cohort1 <- subset(mdata.GSE58144.subset, Batch == 'Cohort 1')
+exp.GSE58144.max.subset.cohort1 <- exp.GSE58144.max.subset[, rownames(mdata.GSE58144.subset.cohort1)]
+
+hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE58144.max.subset.cohort1))), 500))
+pc.RIF.GSE58144.subset.cohort1 <- prcomp(t(exp.GSE58144.max.subset.cohort1[hvg, ]), center = TRUE, scale. = TRUE)
+mdata.GSE58144.subset.cohort1$PC1 <- as.data.frame(pc.RIF.GSE58144.subset.cohort1[5]$x)$PC1
+mdata.GSE58144.subset.cohort1$PC2 <- as.data.frame(pc.RIF.GSE58144.subset.cohort1[5]$x)$PC2
 
 # A - PCA by EndEst and Phenotype
-ps2.8a <- ggplot(mdata.GSE58144, aes(x = PC1, y = PC2, fill = EndEst, shape = Phenotype)) +
+ps2.8a <- ggplot(mdata.GSE58144.subset.cohort1, aes(x = PC1, y = PC2, fill = EndEst, shape = Phenotype)) +
   geom_point(color = 'black', size = 3, alpha = 0.9) +
   labs(title = '', 
-       x = paste0('PC1: ', round((summary(pc.RIF.GSE58144))$importance[2, 1], 4) * 100, '% variance'),
-       y = paste0('PC2: ', round((summary(pc.RIF.GSE58144))$importance[2, 2], 4) * 100, '% variance'),
+       x = paste0('PC1: ', round((summary(pc.RIF.GSE58144.subset.cohort1))$importance[2, 1], 4) * 100, '% variance'),
+       y = paste0('PC2: ', round((summary(pc.RIF.GSE58144.subset.cohort1))$importance[2, 2], 4) * 100, '% variance'),
        color = 'EndEst', shape = 'Phenotype') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13),
@@ -2107,23 +1966,66 @@ ps2.8a <- ggplot(mdata.GSE58144, aes(x = PC1, y = PC2, fill = EndEst, shape = Ph
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
-t.test(EndEst ~ Phenotype, mdata.GSE58144)
-ps2.8b <- ggplot(mdata.GSE58144, aes(Phenotype, EndEst)) +
+t.test(EndEst ~ Phenotype, mdata.GSE58144.subset.cohort1)
+ps2.8b <- ggplot(mdata.GSE58144.subset.cohort1, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
-  # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 0.702', x = 'Phenotype', y = 'EndEst') +
+  labs(title = 'p = 0.750', x = 'Phenotype', y = 'EndEst') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.8 <- wrap_plots(ps2.8a, ps2.8b, ncol = 2, widths = c(3, 1)) +
-  plot_annotation(title = 'GSE58144', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
+ps2.8 <- wrap_plots(ps2.8a, ps2.8b, ncol = 2, widths = c(2, 1)) +
+  plot_annotation(title = 'GSE58144 - Cohort 1', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
+
+
+## GSE58144 - Cohort 2, batch 1
+table(mdata.GSE58144.subset$Batch)
+mdata.GSE58144.subset.cohort2.batch1 <- subset(mdata.GSE58144.subset, Batch == 'Cohort 2, batch 1')
+exp.GSE58144.max.subset.cohort2.batch1 <- exp.GSE58144.max.subset[, rownames(mdata.GSE58144.subset.cohort2.batch1)]
+
+hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE58144.max.subset.cohort2.batch1))), 500))
+pc.RIF.GSE58144.subset.cohort2.batch1 <- prcomp(t(exp.GSE58144.max.subset.cohort2.batch1[hvg, ]), center = TRUE, scale. = TRUE)
+mdata.GSE58144.subset.cohort2.batch1$PC1 <- as.data.frame(pc.RIF.GSE58144.subset.cohort2.batch1[5]$x)$PC1
+mdata.GSE58144.subset.cohort2.batch1$PC2 <- as.data.frame(pc.RIF.GSE58144.subset.cohort2.batch1[5]$x)$PC2
+
+# A - PCA by EndEst and Phenotype
+ps2.9a <- ggplot(mdata.GSE58144.subset.cohort2.batch1, aes(x = PC1, y = PC2, fill = EndEst, shape = Phenotype)) +
+  geom_point(color = 'black', size = 3, alpha = 0.9) +
+  labs(title = '', 
+       x = paste0('PC1: ', round((summary(pc.RIF.GSE58144.subset.cohort2.batch1))$importance[2, 1], 4) * 100, '% variance'),
+       y = paste0('PC2: ', round((summary(pc.RIF.GSE58144.subset.cohort2.batch1))$importance[2, 2], 4) * 100, '% variance'),
+       color = 'EndEst', shape = 'Phenotype') +
+  theme_classic(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, size = 13),
+        axis.text.x = element_text(size = 13), 
+        axis.text.y = element_text(size = 13),
+        legend.text = element_text(size = 13), 
+        legend.title = element_text(size = 13)) +
+  scale_fill_viridis_c() +
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
+
+# B - Boxplot by EndEst and Phenotype
+t.test(EndEst ~ Phenotype, mdata.GSE58144.subset.cohort2.batch1)
+ps2.9b <- ggplot(mdata.GSE58144.subset.cohort2.batch1, aes(Phenotype, EndEst)) +
+  geom_boxplot(color = 'black', fill = '#f0f0f0') + 
+  geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
+  labs(title = 'p = 0.950', x = 'Phenotype', y = 'EndEst') +
+  theme_classic(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
+        axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
+        axis.text.y = element_text(size = 13)) +
+  coord_cartesian(ylim = c(0, 100))
+
+ps2.9 <- wrap_plots(ps2.9a, ps2.9b, ncol = 2, widths = c(2, 1)) +
+  plot_annotation(title = 'GSE58144 - Cohort 2, batch 1', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
 ## GSE71331
@@ -2133,7 +2035,7 @@ mdata.GSE71331$PC1 <- as.data.frame(pc.RIF.GSE71331[5]$x)$PC1
 mdata.GSE71331$PC2 <- as.data.frame(pc.RIF.GSE71331[5]$x)$PC2
 
 # A - PCA by EndEst and Phenotype
-ps2.9a <- ggplot(mdata.GSE71331, aes(x = PC1, y = PC2, fill = EndEst, shape = Phenotype)) +
+ps2.10a <- ggplot(mdata.GSE71331, aes(x = PC1, y = PC2, fill = EndEst, shape = Phenotype)) +
   geom_point(color = 'black', size = 3, alpha = 0.9) +
   labs(title = '', 
        x = paste0('PC1: ', round((summary(pc.RIF.GSE71331))$importance[2, 1], 4) * 100, '% variance'),
@@ -2146,11 +2048,12 @@ ps2.9a <- ggplot(mdata.GSE71331, aes(x = PC1, y = PC2, fill = EndEst, shape = Ph
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE71331)
-ps2.9b <- ggplot(mdata.GSE71331, aes(Phenotype, EndEst)) +
+ps2.10b <- ggplot(mdata.GSE71331, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
@@ -2161,47 +2064,8 @@ ps2.9b <- ggplot(mdata.GSE71331, aes(Phenotype, EndEst)) +
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.9 <- wrap_plots(ps2.9a, ps2.9b, ncol = 2, widths = c(3, 1)) +
+ps2.10 <- wrap_plots(ps2.10a, ps2.10b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE71331', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
-
-
-## GSE71835
-hvg <- names(tail(sort(rowVars(as.matrix(exp.GSE71835))), 500))
-pc.RIF.GSE71835 <- prcomp(t(exp.GSE71835[hvg, ]), center = TRUE, scale. = TRUE)
-mdata.GSE71835$PC1 <- as.data.frame(pc.RIF.GSE71835[5]$x)$PC1
-mdata.GSE71835$PC2 <- as.data.frame(pc.RIF.GSE71835[5]$x)$PC2
-
-# A - PCA by EndEst and Phenotype
-ps2.10a <- ggplot(mdata.GSE71835, aes(x = PC1, y = PC2, fill = EndEst, shape = Phenotype)) +
-  geom_point(color = 'black', size = 3, alpha = 0.9) +
-  labs(title = '', 
-       x = paste0('PC1: ', round((summary(pc.RIF.GSE71835))$importance[2, 1], 4) * 100, '% variance'),
-       y = paste0('PC2: ', round((summary(pc.RIF.GSE71835))$importance[2, 2], 4) * 100, '% variance'),
-       color = 'EndEst', shape = 'Phenotype') +
-  theme_classic(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5, size = 13),
-        axis.text.x = element_text(size = 13), 
-        axis.text.y = element_text(size = 13),
-        legend.text = element_text(size = 13), 
-        legend.title = element_text(size = 13)) +
-  scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
-
-# B - Boxplot by EndEst and Phenotype
-t.test(EndEst ~ Phenotype, mdata.GSE71835)
-ps2.10b <- ggplot(mdata.GSE71835, aes(Phenotype, EndEst)) +
-  geom_boxplot(color = 'black', fill = '#f0f0f0') + 
-  geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
-  # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 0.028', x = 'Phenotype', y = 'EndEst') +
-  theme_classic(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
-        axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
-        axis.text.y = element_text(size = 13)) +
-  coord_cartesian(ylim = c(0, 100))
-
-ps2.10 <- wrap_plots(ps2.10a, ps2.10b, ncol = 2, widths = c(3, 1)) +
-  plot_annotation(title = 'GSE71835', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
 ## GSE92324
@@ -2224,7 +2088,8 @@ ps2.11a <- ggplot(mdata.GSE92324, aes(x = PC1, y = PC2, fill = EndEst, shape = P
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.GSE92324)
@@ -2232,14 +2097,14 @@ ps2.11b <- ggplot(mdata.GSE92324, aes(Phenotype, EndEst)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   # geom_point(size = 3, alpha = 0.4, position = position_dodge2(width = 0.4)) +
-  labs(title = 'p = 4.54e-4', x = 'Phenotype', y = 'EndEst') +
+  labs(title = 'p = 4.55e-4', x = 'Phenotype', y = 'EndEst') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.11 <- wrap_plots(ps2.11a, ps2.11b, ncol = 2, widths = c(3, 1)) +
+ps2.11 <- wrap_plots(ps2.11a, ps2.11b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'GSE92324', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
@@ -2263,7 +2128,8 @@ ps2.12a <- ggplot(mdata.PRJNA314429, aes(x = PC1, y = PC2, fill = EndEst, shape 
         legend.text = element_text(size = 13), 
         legend.title = element_text(size = 13)) +
   scale_fill_viridis_c() +
-  scale_shape_manual(values = c(21, 24))
+  scale_shape_manual(values = c(21, 24)) +
+  guides(color = guide_legend(order = 1), shape = guide_legend(order = 2))
 
 # B - Boxplot by EndEst and Phenotype
 t.test(EndEst ~ Phenotype, mdata.PRJNA314429)
@@ -2278,18 +2144,14 @@ ps2.12b <- ggplot(mdata.PRJNA314429, aes(Phenotype, EndEst)) +
         axis.text.y = element_text(size = 13)) +
   coord_cartesian(ylim = c(0, 100))
 
-ps2.12 <- wrap_plots(ps2.12a, ps2.12b, ncol = 2, widths = c(3, 1)) +
+ps2.12 <- wrap_plots(ps2.12a, ps2.12b, ncol = 2, widths = c(2, 1)) +
   plot_annotation(title = 'PRJNA314429', theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
 
 
-## Figure S1 panel
+## Figure S2 panel
 ps2 <- wrap_plots(ps2.1, ps2.2, ps2.3, ps2.4, ps2.5, ps2.6,
                   ps2.7, ps2.8, ps2.9, ps2.10, ps2.11, ps2.12, ncol = 3)
-ggsave(plot = ps2, filename = 'visualization/Figure S2.png', width = 17, height = 13, dpi = 300)
-
-
-
-
+ggsave(plot = ps2, filename = 'visualization/Figure S2.png', width = 16, height = 12, dpi = 300)
 
 
 
@@ -2298,43 +2160,46 @@ ggsave(plot = ps2, filename = 'visualization/Figure S2.png', width = 17, height 
 
 ### Figure 2 - Notable cases in analysis 
 
-# Select five additional datasets that have relatively high number of samples
+# Select five datasets with the largest sample size 
 mdata.GSE103465 <- read.csv('processed.data/mdata.GSE103465.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE106602 <- read.csv('processed.data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE106602 <- read.csv('processed.data/mdata.GSE106602.csv', sep = ',', header = T, row.names = 1)[, -9]
 mdata.GSE188409 <- read.csv('processed.data/mdata.GSE188409.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE205398 <- read.csv('processed.data/mdata.GSE205398.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE205398 <- read.csv('processed.data/mdata.GSE205398.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)[, -9]
+mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)[, -9]
 mdata.GSE26787 <- read.csv('processed.data/mdata.GSE26787.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE58144 <- read.csv('processed.data/mdata.GSE58144.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset <- read.csv('processed.data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset.cohort1 <- subset(mdata.GSE58144.subset, Batch == 'Cohort 1')[, -9]
+mdata.GSE58144.subset.cohort1$GEO.accession <- 'GSE58144 - Cohort 1'
+mdata.GSE58144.subset.cohort2.batch1 <- subset(mdata.GSE58144.subset, Batch == 'Cohort 2, batch 1')[, -9]
+mdata.GSE58144.subset.cohort2.batch1$GEO.accession <- 'GSE58144 - Cohort 2, batch 1'
 mdata.GSE71331 <- read.csv('processed.data/mdata.GSE71331.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE71835 <- read.csv('processed.data/mdata.GSE71835.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE92324 <- read.csv('processed.data/mdata.GSE92324.csv', sep = ',', header = T, row.names = 1)
-mdata.PRJNA314429 <- read.csv('processed.data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)
-mdata.merged <- rbind(mdata.GSE103465, mdata.GSE106602, mdata.GSE188409, mdata.GSE205398,
-                      mdata.GSE207362, mdata.GSE243550, mdata.GSE26787, mdata.GSE58144,
-                      mdata.GSE71331, mdata.GSE71835, mdata.GSE92324, mdata.PRJNA314429)
+mdata.PRJNA314429 <- read.csv('processed.data/mdata.PRJNA314429.csv', sep = ',', header = T, row.names = 1)[, -9]
 
+mdata.merged <- rbind(mdata.GSE103465, mdata.GSE106602, mdata.GSE188409, mdata.GSE205398,
+                      mdata.GSE207362, mdata.GSE243550, mdata.GSE26787, mdata.GSE58144.subset.cohort1,
+                      mdata.GSE58144.subset.cohort2.batch1, mdata.GSE71331, mdata.GSE92324, mdata.PRJNA314429)
 table(mdata.merged$GEO.accession, mdata.merged$Phenotype) # all samples
 
-#             Fertile RIF
-# GSE103465        3   3
-# GSE106602       16  19 *
-# GSE188409        5   5 
-# GSE205398        3   3
-# GSE207362       26  12 *
-# GSE243550       20  20 *
-# GSE26787         5   5
-# GSE58144        72  43 *
-# GSE71331         5   7
-# GSE71835         6   6 -
-# GSE92324         8  10 *
-# PRJNA314429      3   5
+#                              Fertile RIF
+# GSE103465                          3   3
+# GSE106602                         16  19 *
+# GSE188409                          5   5
+# GSE205398                          3   3
+# GSE207362                         26  12 *
+# GSE243550                         20  20 *
+# GSE26787                           5   5
+# GSE58144 - Cohort 1               23  22 *
+# GSE58144 - Cohort 2, batch 1      45  20 *
+# GSE71331                           5   7
+# GSE92324                           8  10 *
+# PRJNA314429                        3   5
 
 exp.GSE106602 <- read.csv('processed.data/vst.GSE106602.mtx.csv', sep = ',', header = T, row.names = 1)
 exp.GSE207362 <- read.csv('processed.data/vst.GSE207362.mtx.csv', sep = ',', header = T, row.names = 1)
 exp.GSE243550 <- read.csv('processed.data/vst.GSE243550.mtx.csv', sep = ',', header = T, row.names = 1)
-exp.GSE58144 <- read.csv('processed.data/exp.GSE58144.max.corrected.csv', sep = ',', header = T, row.names = 1)
+exp.GSE58144.subset <- read.csv('processed.data/exp.GSE58144.max.subset.csv', sep = ',', header = T, row.names = 1)
 exp.GSE92324 <- read.csv('processed.data/exp.GSE92324.max.csv', sep = ',', header = T, row.names = 1)
 
 
@@ -2387,7 +2252,7 @@ dea.GSE106602.simple.subset.up[!(rownames(dea.GSE106602.simple.subset.up) %in% r
 dea.GSE106602.complex.subset.up[!(rownames(dea.GSE106602.complex.subset.up) %in% rownames(dea.GSE106602.simple.subset.up)), ] %>% 
   arrange(-logFC) %>% head() # up only in complex mode
 dea.GSE106602.simple.subset.up[rownames(dea.GSE106602.simple.subset.up) %in% rownames(dea.GSE106602.complex.subset.up), ] %>% 
-  arrange(-logFC) %>% head() # intersection, CLEC3B is the top
+  arrange(-logFC) %>% head() # intersection, take CLEC3B as an example
 
 dea.GSE106602.simple.subset.down[!(rownames(dea.GSE106602.simple.subset.down) %in% rownames(dea.GSE106602.complex.subset.down)), ] %>% 
   arrange(logFC) %>% head() # down only in simple mode
@@ -2465,7 +2330,7 @@ dea.GSE106602.simple.subset['CLEC3B',]
 p2c1 <- ggplot(mdata.GSE106602.subset, aes(Phenotype, CLEC3B)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'CLEC3B\np = 3.09e-06', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
+  labs(title = 'CLEC3B\np = 2.20e-07', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
@@ -2475,7 +2340,7 @@ dea.GSE106602.complex.subset['CLEC3B',]
 p2c2 <- ggplot(mdata.GSE106602.subset, aes(EndEst, CLEC3B, color = Phenotype, fill = Phenotype)) +
   geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
   geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'CLEC3B\np = 6.78e-3', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
+  labs(title = 'CLEC3B\np = 7.14e-3', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13), 
@@ -2539,7 +2404,7 @@ dea.GSE92324.simple.subset.up[!(rownames(dea.GSE92324.simple.subset.up) %in% row
 dea.GSE92324.complex.subset.up[!(rownames(dea.GSE92324.complex.subset.up) %in% rownames(dea.GSE92324.simple.subset.up)), ] %>% 
   arrange(-logFC) %>% head() # up only in complex mode
 dea.GSE92324.simple.subset.up[rownames(dea.GSE92324.simple.subset.up) %in% rownames(dea.GSE92324.complex.subset.up), ] %>% 
-  arrange(-logFC) %>% head() # intersection, TMEM144
+  arrange(-logFC) %>% head() # intersection, take TMEM144 as an example
 
 dea.GSE92324.simple.subset.down[!(rownames(dea.GSE92324.simple.subset.down) %in% rownames(dea.GSE92324.complex.subset.down)), ] %>% 
   arrange(logFC) %>% head() # down only in simple mode
@@ -2715,9 +2580,9 @@ dea.GSE243550.simple.subset.down[!(rownames(dea.GSE243550.simple.subset.down) %i
 dea.GSE243550.complex.subset.down[!(rownames(dea.GSE243550.complex.subset.down) %in% rownames(dea.GSE243550.simple.subset.down)), ] %>% 
   arrange(logFC) %>% head() # down only in complex mode
 dea.GSE243550.simple.subset.down[rownames(dea.GSE243550.simple.subset.down) %in% rownames(dea.GSE243550.complex.subset.down), ] %>% 
-  arrange(logFC) %>% head() # intersection 
+  arrange(logFC) %>% head() # intersection, take COL27A1 as an example
 
-mdata.GSE243550.subset$TNC <- as.numeric(exp.GSE243550.subset['TNC', ])
+mdata.GSE243550.subset$COL27A1 <- as.numeric(exp.GSE243550.subset['COL27A1', ])
 
 # Figure 2H - Venn diagrams for DEGs GSE243550
 degs.GSE243550.simple.subset.up <- rownames(dea.GSE243550.simple.subset.up[
@@ -2782,21 +2647,21 @@ p2h2 <- ggVennDiagram(genesets.up,
 p2h <- wrap_plots(p2h1, p2h2, ncol = 2)
 
 # Figure 2 I - Top Up DEG GSE243550, boxplot and curves
-dea.GSE243550.simple.subset['TNC', ]
-p2i1 <- ggplot(mdata.GSE243550.subset, aes(Phenotype, TNC)) +
+dea.GSE243550.simple.subset['COL27A1', ]
+p2i1 <- ggplot(mdata.GSE243550.subset, aes(Phenotype, COL27A1)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'TNC\np = 0.027', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
+  labs(title = 'COL27A1\np = 4.87e-05', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
         axis.text.y = element_text(size = 13))
 
-dea.GSE243550.complex.subset['TNC',]
-p2i2 <- ggplot(mdata.GSE243550.subset, aes(EndEst, TNC, color = Phenotype, fill = Phenotype)) +
+dea.GSE243550.complex.subset['COL27A1',]
+p2i2 <- ggplot(mdata.GSE243550.subset, aes(EndEst, COL27A1, color = Phenotype, fill = Phenotype)) +
   geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
   geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'TNC\np = 0.014', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
+  labs(title = 'COL27A1\np = 0.029', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13), 
@@ -2939,7 +2804,7 @@ dea.GSE207362.simple.subset['CPZ', ]
 p2l1 <- ggplot(mdata.GSE207362.subset, aes(Phenotype, CPZ)) +
   geom_boxplot(color = 'black', fill = '#f0f0f0') + 
   geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'CPZ\np = 5.08e-03', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
+  labs(title = 'CPZ\np = 6.56e-03', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
@@ -2949,7 +2814,7 @@ dea.GSE207362.complex.subset['CPZ',]
 p2l2 <- ggplot(mdata.GSE207362.subset, aes(EndEst, CPZ, color = Phenotype, fill = Phenotype)) +
   geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
   geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'CPZ\np = 0.047', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
+  labs(title = 'CPZ\np = 0.046', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
   theme_classic(base_size = 13) +
   theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
         axis.text.x = element_text(size = 13), 
@@ -2967,7 +2832,15 @@ p2l <- wrap_plots(p2l1, p2l2, ncol = 2, widths = c(1, 3))
 ## GSE58144
 
 # Figure 2M - Dotplot by EndEst and Phenotype GSE58144
-p2m <- ggplot(mdata.GSE58144, aes(EndEst, Phenotype)) + 
+
+mdata.GSE58144.subset$Phenotype.Batch <- paste0(mdata.GSE58144.subset$Phenotype, 
+                                                ' - ',
+                                                mdata.GSE58144.subset$Batch)
+table(mdata.GSE58144.subset$Phenotype.Batch)
+mdata.GSE58144.subset$Phenotype.Batch <- factor(mdata.GSE58144.subset$Phenotype.Batch, levels = c(
+  'Fertile - Cohort 2, batch 1', 'RIF - Cohort 2, batch 1', 'Fertile - Cohort 1', 'RIF - Cohort 1'))
+
+p2m <- ggplot(mdata.GSE58144.subset, aes(EndEst, Phenotype.Batch)) + 
   geom_point(position = position_dodge2(width = 0.3), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
   geom_vline(xintercept = 58.5, color = 'black', linetype = 'dashed') +
   geom_vline(xintercept = 75.5, color = 'black', linetype = 'dashed') +
@@ -2975,77 +2848,77 @@ p2m <- ggplot(mdata.GSE58144, aes(EndEst, Phenotype)) +
   theme_classic(base_size = 13) +
   theme(axis.text.x = element_text(size = 13),
         axis.text.y = element_text(size = 13)) +
-  scale_x_continuous(n.breaks = 6, limits = c(12, 80))
+  scale_x_continuous(n.breaks = 6, limits = c(6, 84))
 
 # Prepare subset of data to make groups comparable by EndEst
-mdata.GSE58144.subset <- subset(mdata.GSE58144, EndEst > 58 & EndEst < 76)
-exp.GSE58144.subset <- exp.GSE58144[, rownames(mdata.GSE58144.subset)]
+mdata.GSE58144.subset2 <- subset(mdata.GSE58144.subset, EndEst > 58 & EndEst < 76)
+exp.GSE58144.subset2 <- exp.GSE58144.subset[, rownames(mdata.GSE58144.subset2)]
 
 # DEA using simple model using limma (9.2 Two Groups) on the subset of data
-Group <- factor(mdata.GSE58144.subset$Phenotype)
-design <- model.matrix(~ Group)
-fit <- lmFit(exp.GSE58144.subset, design)
+Group <- factor(mdata.GSE58144.subset2$Phenotype)
+Batch <- factor(mdata.GSE58144.subset2$Batch)
+design <- model.matrix(~ Group + Batch)
+fit <- lmFit(exp.GSE58144.subset2, design)
 fit <- eBayes(fit)
 head(design)
-dea.GSE58144.simple.subset <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
+dea.GSE58144.simple.subset2 <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
 
 # DEA using mixed model using limma (9.6.2 Many time points) on the subset of data
-X <- ns(mdata.GSE58144.subset$EndEst, df = 3)
-Group <- factor(mdata.GSE58144.subset$Phenotype)
-design <- model.matrix(~ Group * X)
-fit <- lmFit(exp.GSE58144.subset, design)
+X <- ns(mdata.GSE58144.subset2$EndEst, df = 3)
+design <- model.matrix(~ Group * X + Batch)
+fit <- lmFit(exp.GSE58144.subset2, design)
 fit <- eBayes(fit)
 head(design)
-dea.GSE58144.complex.subset <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
+dea.GSE58144.complex.subset2 <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
 
 # Identify representative genes
-dea.GSE58144.simple.subset.up <- dea.GSE58144.simple.subset[
-  dea.GSE58144.simple.subset$logFC > 0.667 & dea.GSE58144.simple.subset$P.Value < 0.05, ]
-dea.GSE58144.simple.subset.down <- dea.GSE58144.simple.subset[
-  dea.GSE58144.simple.subset$logFC < -0.667 & dea.GSE58144.simple.subset$P.Value < 0.05, ]
-dea.GSE58144.complex.subset.up <- dea.GSE58144.complex.subset[
-  dea.GSE58144.complex.subset$logFC > 0.667 & dea.GSE58144.complex.subset$P.Value < 0.05, ]
-dea.GSE58144.complex.subset.down <- dea.GSE58144.complex.subset[
-  dea.GSE58144.complex.subset$logFC < -0.667 & dea.GSE58144.complex.subset$P.Value < 0.05, ]
+dea.GSE58144.simple.subset2.up <- dea.GSE58144.simple.subset2[
+  dea.GSE58144.simple.subset2$logFC > 0.667 & dea.GSE58144.simple.subset2$P.Value < 0.05, ]
+dea.GSE58144.simple.subset2.down <- dea.GSE58144.simple.subset2[
+  dea.GSE58144.simple.subset2$logFC < -0.667 & dea.GSE58144.simple.subset2$P.Value < 0.05, ]
+dea.GSE58144.complex.subset2.up <- dea.GSE58144.complex.subset2[
+  dea.GSE58144.complex.subset2$logFC > 0.667 & dea.GSE58144.complex.subset2$P.Value < 0.05, ]
+dea.GSE58144.complex.subset2.down <- dea.GSE58144.complex.subset2[
+  dea.GSE58144.complex.subset2$logFC < -0.667 & dea.GSE58144.complex.subset2$P.Value < 0.05, ]
 
-dea.GSE58144.simple.subset.up[!(rownames(dea.GSE58144.simple.subset.up) %in% rownames(dea.GSE58144.complex.subset.up)), ] %>% 
+dea.GSE58144.simple.subset2.up[!(rownames(dea.GSE58144.simple.subset2.up) %in% rownames(dea.GSE58144.complex.subset2.up)), ] %>% 
   arrange(-logFC) %>% head() # up only in simple mode
-dea.GSE58144.complex.subset.up[!(rownames(dea.GSE58144.complex.subset.up) %in% rownames(dea.GSE58144.simple.subset.up)), ] %>% 
+dea.GSE58144.complex.subset2.up[!(rownames(dea.GSE58144.complex.subset2.up) %in% rownames(dea.GSE58144.simple.subset2.up)), ] %>% 
   arrange(-logFC) %>% head() # up only in complex mode
-dea.GSE58144.simple.subset.up[rownames(dea.GSE58144.simple.subset.up) %in% rownames(dea.GSE58144.complex.subset.up), ] %>% 
+dea.GSE58144.simple.subset2.up[rownames(dea.GSE58144.simple.subset2.up) %in% rownames(dea.GSE58144.complex.subset2.up), ] %>% 
   arrange(-logFC) %>% head() # intersection
 
-dea.GSE58144.simple.subset.down[!(rownames(dea.GSE58144.simple.subset.down) %in% rownames(dea.GSE58144.complex.subset.down)), ] %>% 
+dea.GSE58144.simple.subset2.down[!(rownames(dea.GSE58144.simple.subset2.down) %in% rownames(dea.GSE58144.complex.subset2.down)), ] %>% 
   arrange(logFC) %>% head() # down only in simple mode
-dea.GSE58144.complex.subset.down[!(rownames(dea.GSE58144.complex.subset.down) %in% rownames(dea.GSE58144.simple.subset.down)), ] %>% 
+dea.GSE58144.complex.subset2.down[!(rownames(dea.GSE58144.complex.subset2.down) %in% rownames(dea.GSE58144.simple.subset2.down)), ] %>% 
   arrange(logFC) %>% head() # down only in complex mode
-dea.GSE58144.simple.subset.down[rownames(dea.GSE58144.simple.subset.down) %in% rownames(dea.GSE58144.complex.subset.down), ] %>% 
+dea.GSE58144.simple.subset2.down[rownames(dea.GSE58144.simple.subset2.down) %in% rownames(dea.GSE58144.complex.subset2.down), ] %>% 
   arrange(logFC) %>% head() # intersection
 
 # There is no DEGs detected in simple model and intersections 
 
 # Figure 2N - Venn diagrams for DEGs GSE58144
-degs.GSE58144.simple.subset.up <- rownames(dea.GSE58144.simple.subset.up[
-  !(rownames(dea.GSE58144.simple.subset.up) %in% rownames(dea.GSE58144.complex.subset.up)), ])
-degs.GSE58144.complex.subset.up <- rownames(dea.GSE58144.complex.subset.up[
-  !(rownames(dea.GSE58144.complex.subset.up) %in% rownames(dea.GSE58144.simple.subset.up)), ])
-degs.GSE58144.intersection.subset.up <- rownames(dea.GSE58144.simple.subset.up[
-  rownames(dea.GSE58144.simple.subset.up) %in% rownames(dea.GSE58144.complex.subset.up), ])
-degs.GSE58144.simple.subset.down <- rownames(dea.GSE58144.simple.subset.down[
-  !(rownames(dea.GSE58144.simple.subset.down) %in% rownames(dea.GSE58144.complex.subset.down)), ])
-degs.GSE58144.complex.subset.down <- rownames(dea.GSE58144.complex.subset.down[
-  !(rownames(dea.GSE58144.complex.subset.down) %in% rownames(dea.GSE58144.simple.subset.down)), ])
-degs.GSE58144.intersection.subset.down <- rownames(dea.GSE58144.simple.subset.down[
-  rownames(dea.GSE58144.simple.subset.down) %in% rownames(dea.GSE58144.complex.subset.down), ])
+degs.GSE58144.simple.subset2.up <- rownames(dea.GSE58144.simple.subset2.up[
+  !(rownames(dea.GSE58144.simple.subset2.up) %in% rownames(dea.GSE58144.complex.subset2.up)), ])
+degs.GSE58144.complex.subset2.up <- rownames(dea.GSE58144.complex.subset2.up[
+  !(rownames(dea.GSE58144.complex.subset2.up) %in% rownames(dea.GSE58144.simple.subset2.up)), ])
+degs.GSE58144.intersection.subset2.up <- rownames(dea.GSE58144.simple.subset2.up[
+  rownames(dea.GSE58144.simple.subset2.up) %in% rownames(dea.GSE58144.complex.subset2.up), ])
+degs.GSE58144.simple.subset2.down <- rownames(dea.GSE58144.simple.subset2.down[
+  !(rownames(dea.GSE58144.simple.subset2.down) %in% rownames(dea.GSE58144.complex.subset2.down)), ])
+degs.GSE58144.complex.subset2.down <- rownames(dea.GSE58144.complex.subset2.down[
+  !(rownames(dea.GSE58144.complex.subset2.down) %in% rownames(dea.GSE58144.simple.subset2.down)), ])
+degs.GSE58144.intersection.subset2.down <- rownames(dea.GSE58144.simple.subset2.down[
+  rownames(dea.GSE58144.simple.subset2.down) %in% rownames(dea.GSE58144.complex.subset2.down), ])
 
-genesets.down <- list('DEA model:\nGene expression ~ 1 + Phenotype' = 
-                        c(degs.GSE58144.simple.subset.down, degs.GSE58144.intersection.subset.down),
-                      'DEA model:\nGene expression ~ 1 + Phenotype + EndEst\n+ Phenotype:EndEst' = 
-                        c(degs.GSE58144.complex.subset.down, degs.GSE58144.intersection.subset.down))
-genesets.up <- list('DEA model:\nGene expression ~ 1 + Phenotype' = 
-                      c(degs.GSE58144.simple.subset.up, degs.GSE58144.intersection.subset.up),
-                    'DEA model:\nGene expression ~ 1 + Phenotype + EndEst\n+ Phenotype:EndEst' = 
-                      c(degs.GSE58144.complex.subset.up, degs.GSE58144.intersection.subset.up))
+genesets.down <- list('DEA model:\nGene expression ~ 1 + Phenotype + Batch' = 
+                        c(degs.GSE58144.simple.subset2.down, degs.GSE58144.intersection.subset2.down),
+                      'DEA model:\nGene expression ~ 1 + Phenotype + EndEst\n+ Phenotype:EndEst + Batch' = 
+                        c(degs.GSE58144.complex.subset2.down, degs.GSE58144.intersection.subset2.down))
+genesets.up <- list('DEA model:\nGene expression ~ 1 + Phenotype + Batch' = 
+                      c(degs.GSE58144.simple.subset2.up, degs.GSE58144.intersection.subset2.up),
+                    'DEA model:\nGene expression ~ 1 + Phenotype + EndEst\n+ Phenotype:EndEst + Batch' = 
+                      c(degs.GSE58144.complex.subset2.up, degs.GSE58144.intersection.subset2.up))
 
 p2n1 <- ggVennDiagram(genesets.down,
                       label = 'count', 
@@ -3063,9 +2936,9 @@ p2n1 <- ggVennDiagram(genesets.down,
   scale_x_continuous(expand = expansion(mult = c(0.6, 0.01))) +
   scale_fill_gradient(low = '#F4FAFE', high = '#878787', limits = c(0, 28)) +
   scale_y_reverse() +
-  annotate('text', label = c('DEA model:\nGene expression ~ 1 + Phenotype', 
-                             'DEA model:\nGene expression ~ 1 + Phenotype\n+ EndEst + Phenotype:EndEst'), 
-           x = c(-20, -20), y = c(-1.4, 5.4), size = 4.7)
+  annotate('text', label = c('DEA model:\nGene expression ~ 1 + Phenotype + Cohort', 
+                             'DEA model:\nGene expression ~ 1 + Phenotype\n+ EndEst + Phenotype:EndEst + Cohort'), 
+           x = c(-25, -25), y = c(-1.4, 5.4), size = 4.7)
 
 p2n2 <- ggVennDiagram(genesets.up,
                       label = 'count', 
@@ -3086,47 +2959,16 @@ p2n2 <- ggVennDiagram(genesets.up,
 
 p2n <- wrap_plots(p2n1, p2n2, ncol = 2)
 
-
-# Figure 2 O - Top Up DEG for GSE111974, boxplot and curves
-mdata.GSE58144.subset$PHF8 <- as.numeric(exp.GSE58144.subset['PHF8', ])
-
-dea.GSE58144.simple.subset['PHF8', ]
-p2o1 <- ggplot(mdata.GSE58144.subset, aes(Phenotype, PHF8)) +
-  geom_boxplot(color = 'black', fill = '#f0f0f0') + 
-  geom_point(position = position_dodge2(width = 0.4), color = 'black', fill = '#bdbdbd', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'PHF8\np = 0.932', x = 'Phenotype', y = 'mRNA levels,\nlog-normalized values') +
-  theme_classic(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
-        axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
-        axis.text.y = element_text(size = 13))
-
-dea.GSE58144.complex.subset['PHF8',]
-p2o2 <- ggplot(mdata.GSE58144.subset, aes(EndEst, PHF8, color = Phenotype, fill = Phenotype)) +
-  geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
-  geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
-  labs(title = 'PHF8\np = 0.078', x = 'EndEst', y = 'mRNA levels,\nlog-normalized values') +
-  theme_classic(base_size = 13) +
-  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
-        axis.text.x = element_text(size = 13), 
-        axis.text.y = element_text(size = 13),
-        legend.text = element_text(size = 13), 
-        legend.title = element_text(size = 13),
-        legend.position = 'bottom') +
-  scale_colour_brewer(palette = 'Set2') +
-  scale_fill_brewer(palette = 'Set2')
-
-p2o <- wrap_plots(p2o1, p2o2, ncol = 2, widths = c(1, 3))
-
-
 # Figure 2 panel
 p2.line1 <- wrap_plots(p2a, p2b, p2c, ncol = 3, widths = c(1.3, 3.7, 3))
 p2.line2 <- wrap_plots(p2d, p2e, p2f, ncol = 3, widths = c(1.3, 3.7, 3))
 p2.line3 <- wrap_plots(p2g, p2h, p2i, ncol = 3, widths = c(1.3, 3.7, 3))
 p2.line4 <- wrap_plots(p2j, p2k, p2l, ncol = 3, widths = c(1.3, 3.7, 3))
-p2.line5 <- wrap_plots(p2m, p2n, p2o, ncol = 3, widths = c(1.3, 3.7, 3))
-p2 <- wrap_plots(p2.line1, p2.line2, p2.line3, p2.line4, p2.line5, nrow = 5)
-ggsave(plot = p2, filename = 'visualization/Figure 2.png', width = 14, height = 18, dpi = 300)
+p2lines1234 <- wrap_plots(p2.line1, p2.line2, p2.line3, p2.line4, nrow = 4)
+ggsave(plot = p2lines1234, filename = 'visualization/Figure 2 a-l.png', width = 14, height = 14, dpi = 300)
 
+p2.line5 <- wrap_plots(p2m, p2n, ncol = 2, widths = c(2, 4.7))
+ggsave(plot = p2.line5, filename = 'visualization/Figure 2 mn.png', width = 12, height = 2.5, dpi = 300)
 
 
 
@@ -3223,11 +3065,11 @@ seu.PRJNA1141235$DF_prediction <- seu.PRJNA1141235.DF$DF_prediction
 seu.PRJNA1141235 <- JoinLayers(seu.PRJNA1141235)
 table(seu.PRJNA1141235$DF_prediction, seu.PRJNA1141235$orig.ident)
 seu.PRJNA1141235 <- subset(seu.PRJNA1141235, DF_prediction == 'Singlet')
-saveRDS(seu.PRJNA1141235, file.path('processed.data/seu.PRJNA1141235.Rds'))
+saveRDS(seu.PRJNA1141235, file.path('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.Rds'))
 
 
 # Prepare separate object for cell type deconvolution in Figure 3 - both phases
-seu.PRJNA1141235.fig3 <- readRDS('processed.data/seu.PRJNA1141235.Rds')
+seu.PRJNA1141235.fig3 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.Rds')
 seu.PRJNA1141235.fig3[['RNA']] <- split(seu.PRJNA1141235.fig3[['RNA']], f = seu.PRJNA1141235.fig3$orig.ident)
 seu.PRJNA1141235.fig3 <- NormalizeData(seu.PRJNA1141235.fig3)
 seu.PRJNA1141235.fig3 <- FindVariableFeatures(seu.PRJNA1141235.fig3, selection.method = 'vst', nfeatures = 2000)
@@ -3387,11 +3229,11 @@ p3d <- DotPlot(seu.PRJNA1141235.fig3, assay = 'RNA', features = marker.genes.df$
 # p3d[['guides']][['guides']][['size']][['params']][['title']] <- 'Percent\nexpressed'
 
 gc()
-saveRDS(seu.PRJNA1141235.fig3, file.path('processed.data/seu.PRJNA1141235.fig3.Rds'))
+saveRDS(seu.PRJNA1141235.fig3, file.path('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig3.Rds'))
 write.csv(features.ids, 'processed.data/features.ids.csv')
 write.csv(marker.genes.df, 'processed.data/marker.genes.df.csv')
 # Use this files to replicate Figure 3 plots
-seu.PRJNA1141235.fig3 <- readRDS('processed.data/seu.PRJNA1141235.fig3.Rds')
+seu.PRJNA1141235.fig3 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig3.Rds')
 features.ids <- read.csv('processed.data/features.ids.csv')
 marker.genes.df <- read.csv('processed.data/marker.genes.df.csv')
 
@@ -3420,30 +3262,30 @@ write.csv(seu.PRJNA1141235.fig3.reference.sliced, 'processed.data/seu.PRJNA11412
 
 # clone GitHub repository https://github.com/BNadel/GEDITExpanded
 # use python3 and run GEDITExpanded-main/GEDITv3.0/GEDIT3.py script in terminal as follows
-# python3 GEDIT3.py -mix /home/pd/projects/project_RIF/processed.data/exp.GSE111974.max.csv -ref /home/pd/projects/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/project_RIF/processed.data/GSE111974.dcnv.results
-# python3 GEDIT3.py -mix /home/pd/projects/project_RIF/processed.data/exp.GSE58144.max.corrected.csv -ref /home/pd/projects/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/project_RIF/processed.data/GSE58144.dcnv.results
-# python3 GEDIT3.py -mix /home/pd/projects/project_RIF/processed.data/vst.GSE207362.mtx.csv -ref /home/pd/projects/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/project_RIF/processed.data/GSE207362.dcnv.results
-# python3 GEDIT3.py -mix /home/pd/projects/project_RIF/processed.data/vst.GSE243550.mtx.csv -ref /home/pd/projects/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/project_RIF/processed.data/GSE243550.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/exp.GSE111974.max.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE111974.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/exp.GSE58144.max.subset.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE58144.subset.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/vst.GSE207362.mtx.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE207362.dcnv.results
+# python3 GEDIT3.py -mix /home/pd/projects/article_2025_RIF/project_RIF/processed.data/vst.GSE243550.mtx.csv -ref /home/pd/projects/article_2025_RIF/project_RIF/processed.data/seu.PRJNA1141235.fig3.reference.sliced.csv -outFile /home/pd/projects/article_2025_RIF/project_RIF/processed.data/GSE243550.dcnv.results
 
 gedit_result.GSE111974 <- read.csv('processed.data/GSE111974.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
 gedit_result.GSE207362 <- read.csv('processed.data/GSE207362.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
 gedit_result.GSE243550 <- read.csv('processed.data/GSE243550.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
-gedit_result.GSE58144 <- read.csv('processed.data/GSE58144.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
+gedit_result.GSE58144.subset <- read.csv('processed.data/GSE58144.subset.dcnv.results_CTPredictions.tsv', sep = '\t', header = T, row.names = 1)
 
 mdata.GSE111974 <- read.csv('processed.data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE207362 <- read.csv('processed.data/mdata.GSE207362.csv', sep = ',', header = T, row.names = 1)
 mdata.GSE243550 <- read.csv('processed.data/mdata.GSE243550.csv', sep = ',', header = T, row.names = 1)
-mdata.GSE58144 <- read.csv('processed.data/mdata.GSE58144.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE58144.subset <- read.csv('processed.data/mdata.GSE58144.subset.csv', sep = ',', header = T, row.names = 1)
 
 mdata.GSE111974 <- cbind(mdata.GSE111974, gedit_result.GSE111974)
 mdata.GSE207362 <- cbind(mdata.GSE207362, gedit_result.GSE207362)
 mdata.GSE243550 <- cbind(mdata.GSE243550, gedit_result.GSE243550)
-mdata.GSE58144 <- cbind(mdata.GSE58144, gedit_result.GSE58144)
+mdata.GSE58144.subset <- cbind(mdata.GSE58144.subset, gedit_result.GSE58144.subset)
 
 mdata.GSE111974.subset <- subset(mdata.GSE111974, EndEst > 31 & EndEst < 85)
 mdata.GSE207362.subset <- subset(mdata.GSE207362, EndEst > 72 & EndEst < 83)
 mdata.GSE243550.subset <- subset(mdata.GSE243550, EndEst > 66 & EndEst < 80)
-mdata.GSE58144.subset <- subset(mdata.GSE58144, EndEst > 58 & EndEst < 76)
+mdata.GSE58144.subset2 <- subset(mdata.GSE58144.subset, EndEst > 58 & EndEst < 76)
 
 mdata.merged.dcnv.plot.GSE111974.subset <- mdata.GSE111974.subset %>% 
   pivot_longer(cols = colnames(mdata.GSE111974.subset)[c(12:16)], names_to = 'cell_type', values_to = 'Proportion')
@@ -3472,7 +3314,7 @@ p3e1 <- ggplot(mdata.merged.dcnv.plot.GSE111974.subset, aes(EndEst, Proportion *
   scale_fill_brewer(palette = 'Set2')
 
 mdata.merged.dcnv.plot.GSE207362.subset <- mdata.GSE207362.subset %>% 
-  pivot_longer(cols = colnames(mdata.GSE207362.subset)[c(12:16)], names_to = 'cell_type', values_to = 'Proportion')
+  pivot_longer(cols = colnames(mdata.GSE207362.subset)[c(13:17)], names_to = 'cell_type', values_to = 'Proportion')
 
 p3e2 <- ggplot(mdata.merged.dcnv.plot.GSE207362.subset, aes(EndEst, Proportion * 100, color = Phenotype, fill = Phenotype)) +
   geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
@@ -3498,7 +3340,7 @@ p3e2 <- ggplot(mdata.merged.dcnv.plot.GSE207362.subset, aes(EndEst, Proportion *
   scale_fill_brewer(palette = 'Set2')
 
 mdata.merged.dcnv.plot.GSE243550.subset <- mdata.GSE243550.subset %>% 
-  pivot_longer(cols = colnames(mdata.GSE243550.subset)[c(12:16)], names_to = 'cell_type', values_to = 'Proportion')
+  pivot_longer(cols = colnames(mdata.GSE243550.subset)[c(13:17)], names_to = 'cell_type', values_to = 'Proportion')
 
 p3e3 <- ggplot(mdata.merged.dcnv.plot.GSE243550.subset, aes(EndEst, Proportion * 100, color = Phenotype, fill = Phenotype)) +
   geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
@@ -3523,10 +3365,42 @@ p3e3 <- ggplot(mdata.merged.dcnv.plot.GSE243550.subset, aes(EndEst, Proportion *
   scale_colour_brewer(palette = 'Set2') +
   scale_fill_brewer(palette = 'Set2')
 
-mdata.merged.dcnv.plot.GSE58144.subset <- mdata.GSE58144.subset %>% 
-  pivot_longer(cols = colnames(mdata.GSE58144.subset)[c(12:16)], names_to = 'cell_type', values_to = 'Proportion')
+mdata.merged.dcnv.plot.GSE58144.subset2 <- mdata.GSE58144.subset2 %>% 
+  pivot_longer(cols = colnames(mdata.GSE58144.subset)[c(13:17)], names_to = 'cell_type', values_to = 'Proportion')
 
-p3e4 <- ggplot(mdata.merged.dcnv.plot.GSE58144.subset, aes(EndEst, Proportion * 100, color = Phenotype, fill = Phenotype)) +
+head(mdata.merged.dcnv.plot.GSE58144.subset2)
+
+mdata.merged.dcnv.plot.GSE58144.subset2 <- mdata.merged.dcnv.plot.GSE58144.subset2 %>% 
+  mutate(GEO.accession = case_when(
+    Batch == 'Cohort 1' ~ 'GSE58144\nCohort 1',
+    Batch == 'Cohort 2, batch 1' ~ 'GSE58144\nCohort 2, batch 1'))
+
+p3e4 <- ggplot(subset(mdata.merged.dcnv.plot.GSE58144.subset2, Batch == 'Cohort 1'), 
+               aes(EndEst, Proportion * 100, color = Phenotype, fill = Phenotype)) +
+  geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
+  geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
+  facet_rep_grid(GEO.accession ~ cell_type) +
+  # facet_wrap(GEO.accession ~ cell_type, scales = 'free', ncol = 5) +
+  labs(title = '', x = 'EndEst', y = 'Cell type percent') +
+  theme_classic(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
+        strip.background = element_blank(),
+        strip.text.y = element_text(size = 13),
+        strip.text.x = element_blank(),
+        axis.text.x = element_text(size = 13), 
+        axis.text.y = element_text(size = 13),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        legend.text = element_text(size = 13), 
+        legend.title = element_text(size = 13),
+        legend.position = 'none',
+        panel.border = element_blank(), 
+        axis.line = element_line()) +
+  scale_colour_brewer(palette = 'Set2') +
+  scale_fill_brewer(palette = 'Set2')
+
+p3e5 <- ggplot(subset(mdata.merged.dcnv.plot.GSE58144.subset2, Batch == 'Cohort 2, batch 1'), 
+               aes(EndEst, Proportion * 100, color = Phenotype, fill = Phenotype)) +
   geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
   geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
   facet_rep_grid(GEO.accession ~ cell_type) +
@@ -3549,7 +3423,6 @@ p3e4 <- ggplot(mdata.merged.dcnv.plot.GSE58144.subset, aes(EndEst, Proportion * 
   scale_colour_brewer(palette = 'Set2') +
   scale_fill_brewer(palette = 'Set2')
 
-
 # Figure 3 panel
 X <- ns(mdata.GSE111974.subset$EndEst, df = 3)
 Group <- factor(mdata.GSE111974.subset$Phenotype)
@@ -3562,7 +3435,7 @@ dea.dcnv.GSE111974.complex.subset
 X <- ns(mdata.GSE207362.subset$EndEst, df = 3)
 Group <- factor(mdata.GSE207362.subset$Phenotype)
 design <- model.matrix(~ Group * X)
-fit <- lmFit(t(mdata.GSE207362.subset[, c(12:16)]), design)
+fit <- lmFit(t(mdata.GSE207362.subset[, c(13:17)]), design)
 fit <- eBayes(fit)
 dea.dcnv.GSE207362.complex.subset <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
 dea.dcnv.GSE207362.complex.subset
@@ -3570,23 +3443,24 @@ dea.dcnv.GSE207362.complex.subset
 X <- ns(mdata.GSE243550.subset$EndEst, df = 3)
 Group <- factor(mdata.GSE243550.subset$Phenotype)
 design <- model.matrix(~ Group * X)
-fit <- lmFit(t(mdata.GSE243550.subset[, c(12:16)]), design)
+fit <- lmFit(t(mdata.GSE243550.subset[, c(13:17)]), design)
 fit <- eBayes(fit)
 dea.dcnv.GSE243550.complex.subset <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
 dea.dcnv.GSE243550.complex.subset
 
-X <- ns(mdata.GSE58144.subset$EndEst, df = 3)
-Group <- factor(mdata.GSE58144.subset$Phenotype)
-design <- model.matrix(~ Group * X)
-fit <- lmFit(t(mdata.GSE58144.subset[, c(12:16)]), design)
+X <- ns(mdata.GSE58144.subset2$EndEst, df = 3)
+Group <- factor(mdata.GSE58144.subset2$Phenotype)
+Batch <- factor(mdata.GSE58144.subset2$Batch)
+design <- model.matrix(~ Group * X + Batch)
+fit <- lmFit(t(mdata.GSE58144.subset2[, c(13:17)]), design)
 fit <- eBayes(fit)
-dea.dcnv.GSE58144.complex.subset <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
-dea.dcnv.GSE58144.complex.subset
+dea.dcnv.GSE58144.complex.subset2 <- topTable(fit, coef = 2, adjust = 'BH', number = Inf)
+dea.dcnv.GSE58144.complex.subset2
 
 p3.line1 <- wrap_plots(p3a, p3b, p3c, p3d, ncol = 4, widths = c(1, 1, 1, 1.5))
-p3.line2 <- wrap_plots(p3e1, p3e2, p3e3, p3e4, nrow = 4, heights = c(1, 1, 1, 1))
-p3 <- wrap_plots(p3.line1, p3.line2, nrow = 2, heights = c(1, 5))
-ggsave(plot = p3, filename = 'visualization/Figure 3.png', width = 13, height = 15, dpi = 300)
+p3.line2 <- wrap_plots(p3e1, p3e2, p3e3, p3e4, p3e5, nrow = 5, heights = c(1, 1, 1, 1, 1))
+p3 <- wrap_plots(p3.line1, p3.line2, nrow = 2, heights = c(1, 6))
+ggsave(plot = p3, filename = 'visualization/Figure 3.png', width = 12, height = 15, dpi = 300)
 
 
 
@@ -3607,7 +3481,7 @@ marker.genes <- c(
 )
 
 ## PRJNA1141235 subset of secretory phase samples
-seu.PRJNA1141235.fig3 <- readRDS('processed.data/seu.PRJNA1141235.fig3.Rds')
+seu.PRJNA1141235.fig3 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig3.Rds')
 table(seu.PRJNA1141235.fig3$Menstrual.cycle.phase, seu.PRJNA1141235.fig3$Phenotype)
 seu.PRJNA1141235.fig4 <- subset(seu.PRJNA1141235.fig3, Menstrual.cycle.phase == 'Secretory mid')
 # Rerun projection on a reduced number of objects, harmonisation only by donor
@@ -3667,8 +3541,8 @@ ps3c[['guides']][['guides']][['colour']][['params']][['title']] <- 'Average\nexp
 ps3c[['guides']][['guides']][['size']][['params']][['title']] <- 'Percent\nexpressed'
 
 gc()
-saveRDS(seu.PRJNA1141235.fig4, file.path('processed.data/seu.PRJNA1141235.fig4.Rds'))
-seu.PRJNA1141235.fig4 <- readRDS('processed.data/seu.PRJNA1141235.fig4.Rds')
+saveRDS(seu.PRJNA1141235.fig4, file.path('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig4.Rds'))
+seu.PRJNA1141235.fig4 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig4.Rds')
 
 
 
@@ -3851,8 +3725,8 @@ ps3f[['guides']][['guides']][['colour']][['params']][['title']] <- 'Average\nexp
 ps3f[['guides']][['guides']][['size']][['params']][['title']] <- 'Percent\nexpressed'
 
 gc()
-saveRDS(seu.GSE183837, file.path('processed.data/seu.GSE183837.Rds'))
-seu.GSE183837 <- readRDS('processed.data/seu.GSE183837.Rds')
+saveRDS(seu.GSE183837, file.path('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE183837.Rds'))
+seu.GSE183837 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE183837.Rds')
 
 
 
@@ -4031,8 +3905,8 @@ ps3i[['guides']][['guides']][['colour']][['params']][['title']] <- 'Average\nexp
 ps3i[['guides']][['guides']][['size']][['params']][['title']] <- 'Percent\nexpressed'
 
 gc()
-saveRDS(seu.GSE250130, file.path('processed.data/seu.GSE250130.Rds'))
-seu.GSE250130 <- readRDS('processed.data/seu.GSE250130.Rds')
+saveRDS(seu.GSE250130, file.path('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE250130.Rds'))
+seu.GSE250130 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE250130.Rds')
 
 
 ## Figure S3
@@ -4045,9 +3919,9 @@ ggsave(plot = ps3, filename = 'visualization/Figure S3.png', width = 14, height 
 
 
 ## Figure 4A - Whole-sample pseudobulks EndEst annotation
-seu.PRJNA1141235.fig4 <- readRDS('processed.data/seu.PRJNA1141235.fig4.Rds')
-seu.GSE250130 <- readRDS('processed.data/seu.GSE250130.Rds')
-seu.GSE183837 <- readRDS('processed.data/seu.GSE183837.Rds')
+seu.PRJNA1141235.fig4 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.PRJNA1141235.fig4.Rds')
+seu.GSE250130 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE250130.Rds')
+seu.GSE183837 <- readRDS('/home/pd/projects/article_2025_RIF/project_RIF_Zenodo/seu.GSE183837.Rds')
 features.ids <- read.csv('processed.data/features.ids.csv', sep = ',', header = T, row.names = 1)
 marker.genes.df <- read.csv('processed.data/marker.genes.df.csv', sep = ',', header = T, row.names = 1)
 rownames(features.ids) <- features.ids$ensg
@@ -4067,7 +3941,7 @@ pseudo.PRJNA1141235.exp <- pseudo.PRJNA1141235.exp[, c(1:4)]
 ddsTC.pseudo.PRJNA1141235 <- DESeqDataSetFromMatrix(countData = round(as.matrix(pseudo.PRJNA1141235.exp), 0), 
                                                     colData = pseudo.PRJNA1141235.mdata, 
                                                     design = ~ 1)
-keep.pseudo.PRJNA1141235 <- rowSums(counts(ddsTC.pseudo.PRJNA1141235) >= 1) >= 4
+keep.pseudo.PRJNA1141235 <- rowSums(counts(ddsTC.pseudo.PRJNA1141235) >= 1) >= ncol(counts(ddsTC.pseudo.PRJNA1141235))
 table(keep.pseudo.PRJNA1141235)
 ddsTC.pseudo.PRJNA1141235 <- ddsTC.pseudo.PRJNA1141235[keep.pseudo.PRJNA1141235, ]
 vst.pseudo.PRJNA1141235 <- DESeq2::vst(ddsTC.pseudo.PRJNA1141235, blind = TRUE)
@@ -4131,7 +4005,7 @@ pseudo.GSE183837.exp <- pseudo.GSE183837.exp[, c(1:9)]
 ddsTC.pseudo.GSE183837 <- DESeqDataSetFromMatrix(countData = round(as.matrix(pseudo.GSE183837.exp), 0), 
                                                  colData = pseudo.GSE183837.mdata, 
                                                  design = ~ 1)
-keep.pseudo.GSE183837 <- rowSums(counts(ddsTC.pseudo.GSE183837) >= 1) >= 9
+keep.pseudo.GSE183837 <- rowSums(counts(ddsTC.pseudo.GSE183837) >= 1) >= ncol(counts(ddsTC.pseudo.GSE183837))
 table(keep.pseudo.GSE183837)
 ddsTC.pseudo.GSE183837 <- ddsTC.pseudo.GSE183837[keep.pseudo.GSE183837, ]
 vst.pseudo.GSE183837 <- DESeq2::vst(ddsTC.pseudo.GSE183837, blind = TRUE)
@@ -4196,7 +4070,7 @@ pseudo.GSE250130.exp <- pseudo.GSE250130.exp[, c(1:16)]
 ddsTC.pseudo.GSE250130 <- DESeqDataSetFromMatrix(countData = round(as.matrix(pseudo.GSE250130.exp), 0), 
                                                  colData = pseudo.GSE250130.mdata, 
                                                  design = ~ 1)
-keep.pseudo.GSE250130 <- rowSums(counts(ddsTC.pseudo.GSE250130) >= 1) >= 16
+keep.pseudo.GSE250130 <- rowSums(counts(ddsTC.pseudo.GSE250130) >= 1) >= ncol(counts(ddsTC.pseudo.GSE250130))
 table(keep.pseudo.GSE250130)
 ddsTC.pseudo.GSE250130 <- ddsTC.pseudo.GSE250130[keep.pseudo.GSE250130, ]
 vst.pseudo.GSE250130 <- DESeq2::vst(ddsTC.pseudo.GSE250130, blind = TRUE)
@@ -4845,3 +4719,44 @@ p4b <- wrap_plots(p4b11, p4b12,
 p4 <- wrap_plots(p4a, p4b, ncol = 2, widths = c(1, 1.5))
 ggsave(plot = p4, filename = 'visualization/Figure 4 (1).png', width = 13, height = 9, dpi = 300)
 ggsave(plot = p4, filename = 'visualization/Figure 4 (2).png', width = 13, height = 13, dpi = 300)
+
+
+
+
+
+
+## Graphical abstract
+mdata.GSE111974 <- read.csv('processed.data/mdata.GSE111974.csv', sep = ',', header = T, row.names = 1)
+exp.GSE111974 <- read.csv('processed.data/exp.GSE111974.max.csv', sep = ',', header = T, row.names = 1)
+mdata.GSE111974$PDZK1 <- as.numeric(exp.GSE111974['PDZK1', ])
+
+pgabs1 <- ggplot(mdata.GSE111974, aes(Phenotype, PDZK1, fill = Phenotype)) +
+  geom_boxplot(color = 'black', alpha = 0.5) + 
+  geom_point(position = position_dodge2(width = 0.4), color = 'black', size = 3, shape = 21, alpha = 0.8) +
+  labs(title = 'Significant\ndifference', x = 'Phenotype', y = 'mRNA levels') +
+  theme_classic(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
+        axis.text.x = element_text(size = 13, angle = 45, hjust = 1), 
+        axis.text.y = element_text(size = 13),
+        legend.position = 'none') +
+  scale_fill_brewer(palette = 'Set2')
+
+pgabs2 <- ggplot(mdata.GSE111974, aes(EndEst, PDZK1, color = Phenotype, fill = Phenotype)) +
+  geom_smooth(method = lm, formula = y ~ splines::bs(x, 3), se = TRUE) +
+  geom_point(color = 'black', size = 3, shape = 21, alpha = 0.8) +
+  labs(title = 'Non-significant\ndifference', x = 'Menstrual cycle progression', y = 'mRNA levels') +
+  theme_classic(base_size = 13) +
+  theme(plot.title = element_text(hjust = 0.5, size = 13, face = 'italic'),
+        axis.text.x = element_text(size = 13), 
+        axis.text.y = element_text(size = 13),
+        legend.text = element_text(size = 13), 
+        legend.title = element_text(size = 13),
+        legend.position = 'bottom') +
+  scale_colour_brewer(palette = 'Set2') +
+  scale_fill_brewer(palette = 'Set2')
+
+wrap_plots(pgabs1, pgabs2, ncol = 2, widths = c(1, 3)) +
+  plot_annotation(title = 'Differential expression analysis for an example gene\nbefore and after considering the menstrual cycle effect',
+                  theme = theme(plot.title = element_text(size = 13, face = 'bold', hjust = 0.5)))
+ggsave('visualization/GA.png', width = 6, height = 4.5, dpi = 600, limitsize = FALSE) 
+  

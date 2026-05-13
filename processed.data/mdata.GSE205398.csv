@@ -1,7 +1,7 @@
-"","names","GEO.accession","GSM.accession","Sample.name","Phenotype","Menstrual.cycle.time","Menstrual.cycle.phase","Age.years","PC1","PC2","EndEst"
-"SRR19525013","SRR19525013","GSE205398","GSM6211397","GSM6211397","Fertile","middle secretory phase endometrium","Secretory mid",NA,-26.7865028774707,-9.74638804131622,79
-"SRR19525014","SRR19525014","GSE205398","GSM6211396","GSM6211396","Fertile","middle secretory phase endometrium","Secretory mid",NA,14.7802817998212,-2.18790880239206,69
-"SRR19525015","SRR19525015","GSE205398","GSM6211395","GSM6211395","Fertile","middle secretory phase endometrium","Secretory mid",NA,-1.49628593895826,-1.28179256157825,73
-"SRR19525016","SRR19525016","GSE205398","GSM6211394","GSM6211394","RIF","middle secretory phase endometrium","Secretory mid",NA,-8.23684443740079,8.18891112664304,73
-"SRR19525017","SRR19525017","GSE205398","GSM6211393","GSM6211393","RIF","middle secretory phase endometrium","Secretory mid",NA,1.51968219627885,14.1630454080088,72
-"SRR19525018","SRR19525018","GSE205398","GSM6211392","GSM6211392","RIF","middle secretory phase endometrium","Secretory mid",NA,20.2196692577297,-9.13586712936531,67
+"","names","GEO.accession","GSM.accession","Sample.name","Phenotype","Menstrual.cycle.time","Menstrual.cycle.phase","Age.years","files","PC1","PC2","EndEst"
+"SRR19525013","SRR19525013","GSE205398","GSM6211397","GSM6211397","Fertile","middle secretory phase endometrium","Secretory mid",NA,"/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE205398/quants//SRR19525013/quant.sf",-26.5647611416204,-9.73538653702438,78
+"SRR19525014","SRR19525014","GSE205398","GSM6211396","GSM6211396","Fertile","middle secretory phase endometrium","Secretory mid",NA,"/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE205398/quants//SRR19525014/quant.sf",14.8559095408277,-2.15250732058123,69
+"SRR19525015","SRR19525015","GSE205398","GSM6211395","GSM6211395","Fertile","middle secretory phase endometrium","Secretory mid",NA,"/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE205398/quants//SRR19525015/quant.sf",-1.37451492964024,-1.76172186974941,73
+"SRR19525016","SRR19525016","GSE205398","GSM6211394","GSM6211394","RIF","middle secretory phase endometrium","Secretory mid",NA,"/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE205398/quants//SRR19525016/quant.sf",-7.96651073180653,9.4139288119797,73
+"SRR19525017","SRR19525017","GSE205398","GSM6211393","GSM6211393","RIF","middle secretory phase endometrium","Secretory mid",NA,"/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE205398/quants//SRR19525017/quant.sf",1.71785115612568,13.3954910028381,72
+"SRR19525018","SRR19525018","GSE205398","GSM6211392","GSM6211392","RIF","middle secretory phase endometrium","Secretory mid",NA,"/home/pd/datasets/hs_endometrium/bulk_rna_seq/GSE205398/quants//SRR19525018/quant.sf",19.3320261061138,-9.15980408746277,67

@@ -3,6 +3,7 @@
 The repository containes *renv* project with code and materials for the study:
 
 *Modelling menstrual cycle progression reveals the absence of a specific transcriptomic signature for recurrent implantation failure*, by Pavel Deryabin and Aleksandra Borodkina
+
 Mechanisms of Cellular Senescence Research Laboratory
 Institute of Cytology of the Russian Academy of Science
 194064 Tikhoretsky av. 4, St. Petersburg, Russia
@@ -11,6 +12,7 @@ Main result:
 
 <img src="visualization/GA.png" width="800px" />
 Inconsistent results in endometrial transcriptomics, particularly regarding recurrent implantation failure, stem from failing to account for the natural tissue dynamics. Our findings emphasise that adjusting for the menstrual cycle progression is essential for reliable differential gene expression analysis.
+
 
 
 Analysis of bulk microarray datasets is fully reproducible, analysis of bulk and single cell RNA sequencing datasets can be reproduced from the stage of processed expression matrices.
